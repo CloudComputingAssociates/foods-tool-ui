@@ -339,7 +339,10 @@ export class FoodsComponent implements OnInit {
     if (this.selectedFoodIds.size > 1) {
       return '';
     }
-    return this.selectedFood?.id?.toString() || '';
+    // Handle id and foodId
+    const food = this.selectedFood as any;
+    const foodId = food?.id ?? food?.foodId;
+    return foodId?.toString() || '';
   }
 
   // ========================================
