@@ -7,6 +7,7 @@ export interface Food {
   brandInfo?: BrandInfo;
   nutritionFactsImage?: string;
   foodImage?: string;
+  foodImageThumbnail?: string;
   nutritionFactsStatus?: string;
 }
 

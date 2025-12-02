@@ -1,12 +1,12 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { FoodsApiService } from '../services/foods-api.service';
+import { YehApiService } from '../services/yeh-api.service';
 
 interface ImageUploadResponse {
   success: boolean;
   nutritionImageUploaded: boolean;
   productImageUploaded: boolean;
-  nutritionFactsStatus?: string;  // Made optional to match service
+  nutritionFactsStatus?: string;
   message: string;
   warnings?: string[];
 }
@@ -16,22 +16,23 @@ interface ImageUploadResponse {
   templateUrl: './image-upload.component.html',
   styleUrls: ['./image-upload.component.scss']
 })
-export class ImageUploadComponent implements OnInit {
-  @Input() foodQuery: string = '';
-  @Input() existingNutritionImageId: string | null = null;
-  @Input() existingProductImageId: string | null = null;
+export class ImageUploadComponent implements OnInit, OnChanges {
+  @Input() foodId: number | null = null;
+  @Input() foodDescription: string = '';
+  @Input() existingNutritionImageUrl: string | null = null;
+  @Input() existingProductImageUrl: string | null = null;
   @Input() nutritionFactsStatus: string | null = null;
-  
+
   @Output() imagesUploaded = new EventEmitter<ImageUploadResponse>();
   @Output() refreshFood = new EventEmitter<void>();
 
   private baseUrl = 'https://foodsapi.cloudcomputingassociates.net/api/v1';
-  
+
   // Upload states
   isUploading = false;
   nutritionImageFile: File | null = null;
   productImageFile: File | null = null;
-  
+
   // Drag and drop states
   isDraggingNutrition = false;
   isDraggingProduct = false;
@@ -41,26 +42,24 @@ export class ImageUploadComponent implements OnInit {
   productImagePreview: string | null = null;
 
   constructor(
-    private foodsService: FoodsApiService,
+    private foodsService: YehApiService,
     private snackBar: MatSnackBar
   ) {}
 
   ngOnInit() {
-    // Load existing images if they exist
     this.loadExistingImages();
   }
 
   ngOnChanges() {
-    // Reload images when inputs change
     this.loadExistingImages();
   }
 
   private loadExistingImages() {
-    if (this.existingNutritionImageId) {
-      this.nutritionImagePreview = this.foodsService.getImageUrl(this.existingNutritionImageId);
+    if (this.existingNutritionImageUrl) {
+      this.nutritionImagePreview = this.existingNutritionImageUrl;
     }
-    if (this.existingProductImageId) {
-      this.productImagePreview = this.foodsService.getImageUrl(this.existingProductImageId);
+    if (this.existingProductImageUrl) {
+      this.productImagePreview = this.existingProductImageUrl;
     }
   }
 
@@ -78,7 +77,7 @@ export class ImageUploadComponent implements OnInit {
   onNutritionDrop(event: DragEvent) {
     event.preventDefault();
     this.isDraggingNutrition = false;
-    
+
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
       this.handleNutritionFile(files[0]);
@@ -99,7 +98,7 @@ export class ImageUploadComponent implements OnInit {
   onProductDrop(event: DragEvent) {
     event.preventDefault();
     this.isDraggingProduct = false;
-    
+
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
       this.handleProductFile(files[0]);
@@ -155,26 +154,24 @@ export class ImageUploadComponent implements OnInit {
   // File handling
   private handleNutritionFile(file: File) {
     if (!this.validateFile(file)) return;
-    
+
     this.nutritionImageFile = file;
     this.createImagePreview(file, 'nutrition');
   }
 
   private handleProductFile(file: File) {
     if (!this.validateFile(file)) return;
-    
+
     this.productImageFile = file;
     this.createImagePreview(file, 'product');
   }
 
   private validateFile(file: File): boolean {
-    // Check file type
     if (!file.type.startsWith('image/')) {
       this.snackBar.open('Please select an image file', 'Close', { duration: 3000 });
       return false;
     }
 
-    // Check file size (10MB limit)
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
       this.snackBar.open('File size must be less than 10MB', 'Close', { duration: 3000 });
@@ -200,16 +197,24 @@ export class ImageUploadComponent implements OnInit {
   // Remove uploaded files
   removeNutritionImage() {
     this.nutritionImageFile = null;
-    this.nutritionImagePreview = this.existingNutritionImageId 
-      ? this.foodsService.getImageUrl(this.existingNutritionImageId)
+    this.nutritionImagePreview = this.existingNutritionImageUrl
+      ? this.existingNutritionImageUrl
       : null;
   }
 
   removeProductImage() {
     this.productImageFile = null;
-    this.productImagePreview = this.existingProductImageId 
-      ? this.foodsService.getImageUrl(this.existingProductImageId)
+    this.productImagePreview = this.existingProductImageUrl
+      ? this.existingProductImageUrl
       : null;
+  }
+
+  // Clear all images (UI only - does not delete from server)
+  clearAllImages() {
+    this.nutritionImageFile = null;
+    this.productImageFile = null;
+    this.nutritionImagePreview = null;
+    this.productImagePreview = null;
   }
 
   // Upload images
@@ -219,7 +224,7 @@ export class ImageUploadComponent implements OnInit {
       return;
     }
 
-    if (!this.foodQuery) {
+    if (!this.foodDescription) {
       this.snackBar.open('No food selected for image upload', 'Close', { duration: 3000 });
       return;
     }
@@ -228,37 +233,33 @@ export class ImageUploadComponent implements OnInit {
 
     try {
       const formData = new FormData();
-      
+
       if (this.nutritionImageFile) {
         formData.append('nutritionFactsImage', this.nutritionImageFile);
       }
-      
+
       if (this.productImageFile) {
         formData.append('foodImage', this.productImageFile);
       }
 
-      const response = await this.foodsService.uploadImages(this.foodQuery, formData).toPromise();
+      const response = await this.foodsService.uploadImages(this.foodDescription, formData).toPromise();
 
       if (response) {
-        this.snackBar.open(response.message || 'Images uploaded successfully!', 'Close', { 
-          duration: 5000 
+        this.snackBar.open(response.message || 'Images uploaded successfully!', 'Close', {
+          duration: 5000
         });
-        
-        // Clear uploaded files but keep previews of what was uploaded
+
         this.nutritionImageFile = null;
         this.productImageFile = null;
-        
-        // Emit success event
+
         this.imagesUploaded.emit(response);
-        
-        // Request parent to refresh food data
         this.refreshFood.emit();
       }
 
     } catch (error: any) {
       console.error('Upload error:', error);
       const errorMessage = error?.error?.message || error?.message || 'Upload failed. Please try again.';
-      
+
       this.snackBar.open(`Upload failed: ${errorMessage}`, 'Close', { duration: 5000 });
     } finally {
       this.isUploading = false;
@@ -270,12 +271,17 @@ export class ImageUploadComponent implements OnInit {
     return !!(this.nutritionImageFile || this.productImageFile);
   }
 
+  // Check if there are any images to clear
+  get hasImagesToClear(): boolean {
+    return !!(this.nutritionImagePreview || this.productImagePreview);
+  }
+
   // Get processing status display
   get nutritionStatusDisplay(): string {
     switch (this.nutritionFactsStatus) {
       case 'pending': return 'Pending OCR processing...';
       case 'processing': return 'AI is extracting nutrition facts...';
-      case 'completed': return 'Nutrition facts extracted ✓';
+      case 'completed': return 'Nutrition facts extracted';
       case 'error': return 'Processing failed - please try again';
       default: return '';
     }

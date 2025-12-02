@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { FoodsApiService } from '../services/foods-api.service';
+import { YehApiService } from '../services/yeh-api.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Food } from '../models/food.model';
 
@@ -40,7 +40,7 @@ export class FoodsComponent implements OnInit {
   showPerServing = true;  // Toggle for per-serving vs per-100g (default: per serving, sticky)
 
   constructor(
-    private foodsService: FoodsApiService,
+    private foodsService: YehApiService,
     private snackBar: MatSnackBar
   ) {}
 
@@ -333,6 +333,13 @@ export class FoodsComponent implements OnInit {
 
   hasAnyImages(): boolean {
     return this.hasNutritionImage() || this.hasProductImage();
+  }
+// Get display Food ID (empty string if multiple selected)
+  getDisplayFoodId(): string {
+    if (this.selectedFoodIds.size > 1) {
+      return '';
+    }
+    return this.selectedFood?.id?.toString() || '';
   }
 
   // ========================================

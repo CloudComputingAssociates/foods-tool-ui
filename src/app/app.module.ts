@@ -25,7 +25,7 @@ import { AppComponent } from './app.component';
 import { AuthModule } from '@auth0/auth0-angular'
 import { LoginComponent } from './login/login.component';
 import { FoodsComponent } from './foods/foods.component';
-import { FoodsApiService } from './services/foods-api.service';
+import { YehApiService } from './services/yeh-api.service';
 import { UriListComponent } from './uri-list/uri-list.component';
 import { ImageUploadComponent } from './image-upload/image-upload.component';
 
@@ -68,7 +68,7 @@ import { ImageUploadComponent } from './image-upload/image-upload.component';
       }
     })
   ],
-  providers: [FoodsApiService],
+  providers: [YehApiService],
   bootstrap: [AppComponent],
   exports: [LoginComponent]
 })

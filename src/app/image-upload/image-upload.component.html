@@ -1,25 +1,25 @@
 <div class="image-upload-container">
   <div class="upload-sections">
-    
+
     <!-- Nutrition Facts Image Section -->
     <div class="upload-section">
       <h3 class="section-title">
         <mat-icon>receipt</mat-icon>
         Nutrition Facts Label
       </h3>
-      
+
       <!-- Status Display -->
       <div class="status-display" *ngIf="showNutritionStatus">
         <mat-icon [class]="'status-icon status-' + nutritionFactsStatus">
-          {{ nutritionFactsStatus === 'completed' ? 'check_circle' : 
+          {{ nutritionFactsStatus === 'completed' ? 'check_circle' :
              nutritionFactsStatus === 'processing' ? 'hourglass_empty' :
              nutritionFactsStatus === 'error' ? 'error' : 'schedule' }}
         </mat-icon>
         <span class="status-text">{{ nutritionStatusDisplay }}</span>
       </div>
-      
+
       <!-- Upload Zone -->
-      <div class="upload-zone" 
+      <div class="upload-zone"
            [class.dragging]="isDraggingNutrition"
            [class.has-image]="nutritionImagePreview"
            (dragover)="onNutritionDragOver($event)"
@@ -27,13 +27,13 @@
            (drop)="onNutritionDrop($event)"
            (paste)="onNutritionPaste($event)"
            tabindex="0">
-        
+
         <!-- Image Preview -->
         <div class="image-preview" *ngIf="nutritionImagePreview">
           <img [src]="nutritionImagePreview" alt="Nutrition Facts Preview">
           <div class="image-overlay">
-            <button mat-icon-button 
-                    color="warn" 
+            <button mat-icon-button
+                    color="warn"
                     class="remove-btn"
                     (click)="removeNutritionImage()"
                     *ngIf="nutritionImageFile">
@@ -41,7 +41,7 @@
             </button>
           </div>
         </div>
-        
+
         <!-- Upload Prompt -->
         <div class="upload-prompt" *ngIf="!nutritionImagePreview">
           <mat-icon class="upload-icon">cloud_upload</mat-icon>
@@ -52,31 +52,31 @@
             Browse Files
           </button>
         </div>
-        
+
         <!-- Hidden File Input -->
-        <input type="file" 
+        <input type="file"
                #nutritionFileInput
                accept="image/*"
                (change)="onNutritionFileSelected($event)"
                style="display: none;">
       </div>
-      
-      <!-- Upload when no preview or when new file selected -->
+
+      <!-- File info when new file selected -->
       <div class="file-info" *ngIf="nutritionImageFile">
         <mat-icon>attach_file</mat-icon>
         <span>{{ nutritionImageFile.name }} ({{ (nutritionImageFile.size / 1024 / 1024).toFixed(1) }}MB)</span>
       </div>
     </div>
-    
+
     <!-- Product Image Section -->
     <div class="upload-section">
       <h3 class="section-title">
         <mat-icon>photo</mat-icon>
         Product Image
       </h3>
-      
+
       <!-- Upload Zone -->
-      <div class="upload-zone" 
+      <div class="upload-zone"
            [class.dragging]="isDraggingProduct"
            [class.has-image]="productImagePreview"
            (dragover)="onProductDragOver($event)"
@@ -84,13 +84,13 @@
            (drop)="onProductDrop($event)"
            (paste)="onProductPaste($event)"
            tabindex="0">
-        
+
         <!-- Image Preview -->
         <div class="image-preview" *ngIf="productImagePreview">
           <img [src]="productImagePreview" alt="Product Image Preview">
           <div class="image-overlay">
-            <button mat-icon-button 
-                    color="warn" 
+            <button mat-icon-button
+                    color="warn"
                     class="remove-btn"
                     (click)="removeProductImage()"
                     *ngIf="productImageFile">
@@ -98,7 +98,7 @@
             </button>
           </div>
         </div>
-        
+
         <!-- Upload Prompt -->
         <div class="upload-prompt" *ngIf="!productImagePreview">
           <mat-icon class="upload-icon">cloud_upload</mat-icon>
@@ -109,33 +109,41 @@
             Browse Files
           </button>
         </div>
-        
+
         <!-- Hidden File Input -->
-        <input type="file" 
+        <input type="file"
                #productFileInput
                accept="image/*"
                (change)="onProductFileSelected($event)"
                style="display: none;">
       </div>
-      
+
       <div class="file-info" *ngIf="productImageFile">
         <mat-icon>attach_file</mat-icon>
         <span>{{ productImageFile.name }} ({{ (productImageFile.size / 1024 / 1024).toFixed(1) }}MB)</span>
       </div>
     </div>
-    
+
   </div>
-  
-  <!-- Upload Button -->
-  <div class="upload-actions" *ngIf="hasFilesToUpload">
-    <button mat-raised-button 
-            color="primary" 
+
+  <!-- Upload and Clear Buttons -->
+  <div class="upload-actions" *ngIf="hasFilesToUpload || hasImagesToClear">
+    <button mat-raised-button
+            color="primary"
             class="upload-btn"
-            [disabled]="isUploading"
+            [disabled]="isUploading || !hasFilesToUpload"
             (click)="uploadImages()">
       <mat-icon *ngIf="!isUploading">cloud_upload</mat-icon>
       <mat-spinner *ngIf="isUploading" diameter="20"></mat-spinner>
-      {{ isUploading ? 'Uploading...' : 'Upload & Process Images' }}
+      {{ isUploading ? 'Uploading...' : 'Upload' }}
+    </button>
+    <button mat-raised-button
+            color="warn"
+            class="clear-btn"
+            [disabled]="isUploading || !hasImagesToClear"
+            (click)="clearAllImages()">
+      <mat-icon>clear</mat-icon>
+      Clear
     </button>
   </div>
 </div>

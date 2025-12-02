@@ -4,7 +4,10 @@
       "Bash(wc:*)",
       "Bash(powershell -Command:*)",
       "Bash(npm run build:*)",
-      "Bash(Select-String -Pattern \"budget|error|warning|exceeded|complete\" -Context 0,1)"
+      "Bash(Select-String -Pattern \"budget|error|warning|exceeded|complete\" -Context 0,1)",
+      "Bash(mv:*)",
+      "Bash(cat:*)",
+      "Bash(md5sum:*)"
     ],
     "deny": [],
     "ask": []

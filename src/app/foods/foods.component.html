@@ -29,28 +29,8 @@
 
     <!-- Left sidebar: Results list with selection controls -->
     <div class="results-sidebar">
-      <!-- Selection toolbar -->
-      <div class="selection-toolbar">
-        <button mat-stroked-button
-                color="primary"
-                (click)="selectAllFoods()"
-                [disabled]="foods.length === 0">
-          Select All
-        </button>
-        <button mat-stroked-button
-                (click)="clearAllSelections()"
-                [disabled]="getSelectedCount() === 0">
-          Clear All
-        </button>
-        <button mat-raised-button
-                color="accent"
-                (click)="submitSelectedFoods()"
-                [disabled]="getSelectedCount() === 0">
-          Submit ({{getSelectedCount()}})
-        </button>
-      </div>
 
-      <!-- Food list with checkboxes -->
+      <!-- Food list with thumbnails -->
       <mat-selection-list #foodList
                           [multiple]="false"
                           (selectionChange)="onFoodSelected($event.options[0]?.value)"
@@ -62,14 +42,14 @@
                          matTooltipPosition="right"
                          class="food-list-item">
           <div class="food-item-content">
-            <!-- Checkbox for multi-select -->
-            <mat-checkbox
-              [checked]="isFoodSelected(food)"
-              (change)="toggleFoodSelection(food)"
-              (click)="$event.stopPropagation()"
-              color="primary"
-              class="food-checkbox">
-            </mat-checkbox>
+            <!-- Thumbnail image or placeholder -->
+            <div class="food-thumbnail">
+              <img *ngIf="food?.foodImageThumbnail"
+                   [src]="food.foodImageThumbnail"
+                   alt="Product thumbnail"
+                   class="thumbnail-img">
+              <div *ngIf="!food?.foodImageThumbnail" class="thumbnail-placeholder"></div>
+            </div>
             <!-- Food description -->
             <span class="food-description">
               {{ truncateDescription(food?.description) }}
@@ -88,6 +68,11 @@
           <div class="nutrition-section">
             <div class="main-nutrients">
               <div class="header-actions">
+                <!-- Food ID text box -->
+                <mat-form-field appearance="outline" class="food-id-field">
+                  <mat-label>Food ID</mat-label>
+                  <input matInput [value]="getDisplayFoodId()" readonly>
+                </mat-form-field>
                 <button mat-button 
                         class="all-nutrients-btn"
                         (click)="showAllNutrients()">
@@ -355,9 +340,10 @@
 
         <!-- Image Upload Component -->
         <app-image-upload 
-          [foodQuery]="currentFoodQuery"
-          [existingNutritionImageId]="existingNutritionImageId"
-          [existingProductImageId]="existingProductImageId"
+          [foodId]="selectedFood?.id"
+          [foodDescription]="selectedFood?.description"
+          [existingNutritionImageUrl]="selectedFood?.nutritionFactsImage"
+          [existingProductImageUrl]="selectedFood?.foodImage"
           [nutritionFactsStatus]="nutritionFactsStatus"
           (imagesUploaded)="onImagesUploaded($event)"
           (refreshFood)="onRefreshFood()">
