@@ -17,15 +17,6 @@ interface ProductUploadResponse {
   food_id: number;
 }
 
-interface ImageUploadResponse {
-  success: boolean;
-  nutritionImageUploaded: boolean;
-  productImageUploaded: boolean;
-  nutritionFactsStatus?: string;
-  message: string;
-  warnings?: string[];
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -61,13 +52,6 @@ export class YehApiService {
 
   refreshFood(query: string): Observable<any> {
     return this.http.get<any>(`${this.baseUrl}/foods/search?query=${encodeURIComponent(query)}`);
-  }
-
-  uploadImages(query: string, formData: FormData): Observable<ImageUploadResponse> {
-    return this.http.put<ImageUploadResponse>(
-      `${this.baseUrl}/foods/images?query=${encodeURIComponent(query)}`,
-      formData
-    );
   }
 
   hasBrandLinks(food: any): boolean {

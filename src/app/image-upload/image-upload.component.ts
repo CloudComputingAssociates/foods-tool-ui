@@ -224,46 +224,95 @@ export class ImageUploadComponent implements OnInit, OnChanges {
       return;
     }
 
-    if (!this.foodDescription) {
-      this.snackBar.open('No food selected for image upload', 'Close', { duration: 3000 });
+    // Nutrition image requires description, Product image requires foodId
+    if (this.nutritionImageFile && !this.foodDescription) {
+      this.snackBar.open('No food description for nutrition image upload', 'Close', { duration: 3000 });
+      return;
+    }
+
+    if (this.productImageFile && !this.foodId) {
+      this.snackBar.open('No Food ID for product image upload', 'Close', { duration: 3000 });
       return;
     }
 
     this.isUploading = true;
 
     try {
-      const formData = new FormData();
+      let nutritionUploaded = false;
+      let productUploaded = false;
+      const warnings: string[] = [];
 
+      // Upload nutrition image if present (uses description)
       if (this.nutritionImageFile) {
-        formData.append('nutritionFactsImage', this.nutritionImageFile);
+        try {
+          const nutritionResponse = await this.foodsService.uploadNutritionImage(
+            this.foodDescription,
+            this.nutritionImageFile
+          ).toPromise();
+
+          if (nutritionResponse?.success) {
+            nutritionUploaded = true;
+            this.nutritionImageFile = null;
+          }
+        } catch (nutritionError: any) {
+          console.error('Nutrition image upload error:', nutritionError);
+          warnings.push(`Nutrition image: ${nutritionError?.error?.message || nutritionError?.message || 'Upload failed'}`);
+        }
       }
 
-      if (this.productImageFile) {
-        formData.append('foodImage', this.productImageFile);
+      // Upload product image if present (uses foodId)
+      if (this.productImageFile && this.foodId) {
+        try {
+          const productResponse = await this.foodsService.uploadProductImage(
+            this.foodId,
+            this.productImageFile
+          ).toPromise();
+
+          if (productResponse?.success) {
+            productUploaded = true;
+            this.productImageFile = null;
+          }
+        } catch (productError: any) {
+          console.error('Product image upload error:', productError);
+          warnings.push(`Product image: ${productError?.error?.message || productError?.message || 'Upload failed'}`);
+        }
       }
 
-      const response = await this.foodsService.uploadImages(this.foodDescription, formData).toPromise();
+      // Build response
+      const response: ImageUploadResponse = {
+        success: nutritionUploaded || productUploaded,
+        nutritionImageUploaded: nutritionUploaded,
+        productImageUploaded: productUploaded,
+        message: this.buildUploadMessage(nutritionUploaded, productUploaded),
+        warnings: warnings.length > 0 ? warnings : undefined
+      };
 
-      if (response) {
-        this.snackBar.open(response.message || 'Images uploaded successfully!', 'Close', {
-          duration: 5000
-        });
-
-        this.nutritionImageFile = null;
-        this.productImageFile = null;
-
+      if (response.success) {
+        this.snackBar.open(response.message, 'Close', { duration: 5000 });
         this.imagesUploaded.emit(response);
         this.refreshFood.emit();
+      } else if (warnings.length > 0) {
+        this.snackBar.open(`Upload failed: ${warnings.join('; ')}`, 'Close', { duration: 5000 });
       }
 
     } catch (error: any) {
       console.error('Upload error:', error);
       const errorMessage = error?.error?.message || error?.message || 'Upload failed. Please try again.';
-
       this.snackBar.open(`Upload failed: ${errorMessage}`, 'Close', { duration: 5000 });
     } finally {
       this.isUploading = false;
     }
+  }
+
+  private buildUploadMessage(nutritionUploaded: boolean, productUploaded: boolean): string {
+    if (nutritionUploaded && productUploaded) {
+      return 'Both images uploaded successfully!';
+    } else if (nutritionUploaded) {
+      return 'Nutrition facts image uploaded successfully!';
+    } else if (productUploaded) {
+      return 'Product image uploaded successfully!';
+    }
+    return 'No images were uploaded';
   }
 
   // Check if there are files ready to upload
