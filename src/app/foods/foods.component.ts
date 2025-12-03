@@ -270,6 +270,10 @@ export class FoodsComponent implements OnInit {
   // NEW: Toggle between per-serving and per-100g display
   toggleServingMode() {
     this.showPerServing = !this.showPerServing;
+    // Force table to update by reassigning selectedFood reference
+    if (this.selectedFood) {
+      this.selectedFood = { ...this.selectedFood };
+    }
   }
 
   // NEW: Get current display unit for footer
