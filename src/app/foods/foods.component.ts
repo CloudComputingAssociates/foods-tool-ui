@@ -27,12 +27,16 @@ interface ImageUploadResponse {
 export class FoodsComponent implements OnInit {
   searchControl = new FormControl('');
   limitControl = new FormControl(50);  // NEW: Default to 50 results
+  yehApprovedControl = new FormControl(false);  // YEH Approved checkbox
   foods: Food[] = [];  // Array of all search results (typed as Food[])
   selectedFood: Food | null = null;  // RENAMED from currentFood
   selectedIndex: number = 0;  // Track selected item for detail view
 
   // NEW: Multi-select state - tracks which foods are selected
   selectedFoodIds: Set<number> = new Set<number>();  // Uses Set for O(1) lookup
+
+  // MAX limit constant
+  private readonly MAX_LIMIT = 200;
 
   isLoading = false;
   displayedColumns: string[] = ['label', 'value', 'unit'];
@@ -49,15 +53,24 @@ export class FoodsComponent implements OnInit {
   }
 
   performSearch() {
-    const query = this.searchControl.value?.trim();
-    if (!query || query.length < 2) {
+    const query = this.searchControl.value?.trim() || '';
+    const isYehApproved = this.yehApprovedControl.value;
+    const limit = this.limitControl.value ?? 50;
+
+    // For regular search, require at least 2 characters
+    // For YEH Approved, allow empty query to get all approved foods
+    if (!isYehApproved && query.length < 2) {
       return;
     }
 
-    const limit = this.limitControl.value ?? 50;
-
     this.isLoading = true;
-    this.foodsService.searchFoods(query, limit).subscribe({
+
+    // Choose API based on YEH Approved checkbox
+    const searchObservable = isYehApproved
+      ? this.foodsService.searchYehApprovedFoods(query, limit)
+      : this.foodsService.searchFoods(query, limit);
+
+    searchObservable.subscribe({
       next: (results) => {
         console.log('RAW API RESPONSE:', results);
 
@@ -73,19 +86,21 @@ export class FoodsComponent implements OnInit {
         console.log('foods array:', this.foods);
         console.log('foods.length:', this.foods.length);
 
-        // Show snackbar with return count
-        if (results && typeof results.count === 'number') {
-          const message = results.count === 0
-            ? `No foods found. Count: ${results.count}`
-            : `Foods returned: ${results.count}`;
+        // Update Result Count to match returned count
+        const returnedCount = results?.count ?? this.foods.length;
+        this.limitControl.setValue(returnedCount);
 
-          this.snackBar.open(message, '✕', {
-            duration: 10000,
-            horizontalPosition: 'center',
-            verticalPosition: 'top',
-            panelClass: ['info-snackbar']
-          });
-        }
+        // Show snackbar with return count
+        const message = returnedCount === 0
+          ? `No foods found. Count: ${returnedCount}`
+          : `Foods returned: ${returnedCount}`;
+
+        this.snackBar.open(message, '✕', {
+          duration: 10000,
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+          panelClass: ['info-snackbar']
+        });
 
         // Auto-select first item
         if (this.foods.length > 0) {
@@ -107,6 +122,16 @@ export class FoodsComponent implements OnInit {
         this.handleError(error, 'Failed to search foods');
       }
     });
+  }
+
+  // Set MAX limit
+  setMaxLimit(): void {
+    this.limitControl.setValue(this.MAX_LIMIT);
+  }
+
+  // Handle YEH Approved checkbox change - trigger search if checked with empty query
+  onYehApprovedChange(): void {
+    // Optional: auto-search when checkbox is checked
   }
 
   // NEW: Handle food selection from list

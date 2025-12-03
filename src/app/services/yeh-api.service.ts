@@ -49,6 +49,21 @@ export class YehApiService {
     return this.http.get<any>(url);
   }
 
+  searchYehApprovedFoods(query?: string, limit?: number): Observable<any> {
+    let url = `${this.baseUrl}/foods/yeh-approved`;
+    const params: string[] = [];
+    if (query && query.trim()) {
+      params.push(`query=${encodeURIComponent(query)}`);
+    }
+    if (limit !== undefined && limit !== null) {
+      params.push(`limit=${limit}`);
+    }
+    if (params.length > 0) {
+      url += '?' + params.join('&');
+    }
+    return this.http.get<any>(url);
+  }
+
   refreshFood(query: string): Observable<any> {
     return this.http.get<any>(`${this.baseUrl}/foods/search?query=${encodeURIComponent(query)}`);
   }

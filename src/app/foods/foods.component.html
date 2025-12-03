@@ -22,6 +22,12 @@
              placeholder="50"
              min="1">
     </mat-form-field>
+    <button mat-raised-button class="max-btn" (click)="setMaxLimit()">MAX</button>
+  </div>
+
+  <!-- YEH Approved checkbox -->
+  <div class="yeh-approved-row">
+    <mat-checkbox [formControl]="yehApprovedControl" (change)="onYehApprovedChange()">YEH Approved</mat-checkbox>
   </div>
 
   <!-- NEW: Split layout with results list on left, details on right -->
