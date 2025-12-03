@@ -41,13 +41,20 @@ export class YehApiService {
   // FOODS API ENDPOINTS (yeh-api)
   // ========================================
 
-  searchFoods(query: string, limit?: number, yehApproved?: boolean): Observable<any> {
+  searchFoods(query: string, limit?: number): Observable<any> {
     let url = `${this.baseUrl}/foods/search?query=${encodeURIComponent(query)}`;
     if (limit !== undefined && limit !== null) {
       url += `&limit=${limit}`;
     }
-    if (yehApproved) {
-      url += '&yehApproved=true';
+    return this.http.get<any>(url);
+  }
+
+  // Get all YEH Approved foods (optionally filtered by query)
+  // Uses /api/foods/search/all/yehapproved endpoint
+  searchYehApprovedFoods(limit?: number): Observable<any> {
+    let url = `${this.baseUrl}/foods/search/all/yehapproved`;
+    if (limit !== undefined && limit !== null) {
+      url += `?limit=${limit}`;
     }
     return this.http.get<any>(url);
   }

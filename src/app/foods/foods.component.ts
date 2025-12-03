@@ -58,7 +58,7 @@ export class FoodsComponent implements OnInit {
     const limit = this.limitControl.value ?? 50;
 
     // For regular search, require at least 2 characters
-    // For YEH Approved with empty query, get all approved foods
+    // For YEH Approved, allow empty query to get all approved foods
     if (!isYehApproved && query.length < 2) {
       return;
     }
@@ -66,29 +66,44 @@ export class FoodsComponent implements OnInit {
     this.isLoading = true;
 
     // Choose API based on YEH Approved checkbox
-    // When YEH Approved is checked, use yehApproved=true parameter on search endpoint
-    const searchObservable = isYehApproved
-      ? this.foodsService.searchFoods(query || '', limit, true)
-      : this.foodsService.searchFoods(query, limit);
+    // YEH Approved uses /api/foods/search/all/yehapproved endpoint
+    // Regular search uses /api/foods/search?query=...
+    let searchObservable;
+    if (isYehApproved) {
+      // YEH Approved: get all approved foods, then filter client-side if query provided
+      searchObservable = this.foodsService.searchYehApprovedFoods(limit);
+    } else {
+      searchObservable = this.foodsService.searchFoods(query, limit);
+    }
 
     searchObservable.subscribe({
       next: (results) => {
         console.log('RAW API RESPONSE:', results);
 
         // API returns {count: number, foods: array} - extract the foods array
+        let foodsArray: Food[] = [];
         if (results && results.foods && Array.isArray(results.foods)) {
-          this.foods = results.foods;
+          foodsArray = results.foods;
         } else if (Array.isArray(results)) {
-          this.foods = results;
+          foodsArray = results;
         } else {
-          this.foods = [results];
+          foodsArray = [results];
         }
 
+        // If YEH Approved is checked and there's a query, filter client-side
+        if (isYehApproved && query) {
+          const lowerQuery = query.toLowerCase();
+          foodsArray = foodsArray.filter((food: Food) =>
+            food.description?.toLowerCase().includes(lowerQuery)
+          );
+        }
+
+        this.foods = foodsArray;
         console.log('foods array:', this.foods);
         console.log('foods.length:', this.foods.length);
 
-        // Update Result Count to match returned count
-        const returnedCount = results?.count ?? this.foods.length;
+        // Update Result Count to match returned/filtered count
+        const returnedCount = this.foods.length;
         this.limitControl.setValue(returnedCount);
 
         // Show snackbar with return count
