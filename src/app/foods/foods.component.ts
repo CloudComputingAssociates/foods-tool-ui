@@ -58,7 +58,7 @@ export class FoodsComponent implements OnInit {
     const limit = this.limitControl.value ?? 50;
 
     // For regular search, require at least 2 characters
-    // For YEH Approved, allow empty query to get all approved foods
+    // For YEH Approved with empty query, get all approved foods
     if (!isYehApproved && query.length < 2) {
       return;
     }
@@ -66,8 +66,9 @@ export class FoodsComponent implements OnInit {
     this.isLoading = true;
 
     // Choose API based on YEH Approved checkbox
+    // When YEH Approved is checked, use yehApproved=true parameter on search endpoint
     const searchObservable = isYehApproved
-      ? this.foodsService.searchYehApprovedFoods(query, limit)
+      ? this.foodsService.searchFoods(query || '', limit, true)
       : this.foodsService.searchFoods(query, limit);
 
     searchObservable.subscribe({
