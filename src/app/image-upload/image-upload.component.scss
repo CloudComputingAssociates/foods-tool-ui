@@ -74,6 +74,38 @@ $warning-color: #ff9800;
           min-height: auto;
         }
 
+        // Image preview container - constrain images to 300px
+        .image-preview {
+          position: relative;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 12px;
+          max-width: 320px;
+          margin: 0 auto;
+
+          img {
+            max-width: 300px;
+            max-height: 300px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          }
+
+          .image-overlay {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+
+            .remove-btn {
+              background: rgba(255,255,255,0.9);
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+          }
+        }
+
         .upload-prompt {
           display: flex;
           flex-direction: column;
