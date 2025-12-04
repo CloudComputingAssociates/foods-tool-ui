@@ -73,16 +73,47 @@
         <div class="panel-content">
           <div class="nutrition-section">
             <div class="main-nutrients">
-              <div class="header-actions">
-                <!-- Food ID text box -->
+              <!-- Row 1: Food ID, ShortDescription, GI, Load, More Nutrients button -->
+              <div class="metadata-row">
                 <mat-form-field appearance="outline" class="food-id-field">
                   <mat-label>Food ID</mat-label>
                   <input matInput [value]="getDisplayFoodId()" readonly>
                 </mat-form-field>
-                <button mat-button 
+                <mat-form-field appearance="outline" class="short-desc-field">
+                  <mat-label>Short Description</mat-label>
+                  <input matInput
+                         [formControl]="shortDescriptionControl"
+                         maxlength="200"
+                         placeholder="Max 200 chars">
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="gi-field">
+                  <mat-label>GI</mat-label>
+                  <input matInput
+                         type="number"
+                         [formControl]="glycemicIndexControl"
+                         placeholder="0-100+">
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="load-field">
+                  <mat-label>Load</mat-label>
+                  <input matInput
+                         type="number"
+                         [formControl]="glycemicLoadControl"
+                         placeholder="0-50+">
+                </mat-form-field>
+                <button mat-button
                         class="all-nutrients-btn"
                         (click)="showAllNutrients()">
                   {{showingAllNutrients ? 'Hide Nutrients' : 'Show All Nutrients'}}
+                </button>
+              </div>
+              <!-- Row 2: Save button -->
+              <div class="save-row">
+                <button mat-raised-button
+                        color="primary"
+                        class="save-metadata-btn"
+                        (click)="saveMetadata()"
+                        [disabled]="isSavingMetadata || !hasMetadataChanges()">
+                  {{isSavingMetadata ? 'Saving...' : 'Save'}}
                 </button>
               </div>
 

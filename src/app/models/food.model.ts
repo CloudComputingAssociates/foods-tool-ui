@@ -2,6 +2,9 @@
 export interface Food {
   id: number;  // SQL FoodID - required for backend many-to-many tables
   description: string;
+  shortDescription?: string | null;
+  glycemicIndex?: number | null;
+  glycemicLoad?: number | null;
   nutritionFacts?: NutritionFacts;
   servingSizeMultiplicand?: number;
   brandInfo?: BrandInfo;
@@ -9,6 +12,12 @@ export interface Food {
   foodImage?: string;
   foodImageThumbnail?: string;
   nutritionFactsStatus?: string;
+}
+
+export interface FoodMetadataUpdate {
+  shortDescription?: string | null;
+  glycemicIndex?: number | null;
+  glycemicLoad?: number | null;
 }
 
 export interface NutritionFacts {

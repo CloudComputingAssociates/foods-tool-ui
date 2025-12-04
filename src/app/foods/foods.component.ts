@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { YehApiService } from '../services/yeh-api.service';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Food } from '../models/food.model';
+import { Food, FoodMetadataUpdate } from '../models/food.model';
 
 interface SimplifiedNutrient {
   label: string;
@@ -43,9 +43,23 @@ export class FoodsComponent implements OnInit {
   showingAllNutrients = false;
   showPerServing = true;  // Toggle for per-serving vs per-100g (default: per serving, sticky)
 
+  // Metadata form controls
+  shortDescriptionControl = new FormControl<string | null>(null);
+  glycemicIndexControl = new FormControl<number | null>(null);
+  glycemicLoadControl = new FormControl<number | null>(null);
+  isSavingMetadata = false;
+
+  // Track original values to detect changes
+  private originalMetadata: { shortDescription: string | null; glycemicIndex: number | null; glycemicLoad: number | null } = {
+    shortDescription: null,
+    glycemicIndex: null,
+    glycemicLoad: null
+  };
+
   constructor(
     private foodsService: YehApiService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -123,9 +137,11 @@ export class FoodsComponent implements OnInit {
           this.selectedIndex = 0;
           this.selectedFood = this.foods[0];
           console.log('Selected first food:', this.selectedFood?.description);
+          this.populateMetadataFields(this.selectedFood);
         } else {
           this.selectedFood = null;
           this.selectedIndex = -1;
+          this.clearMetadataFields();
           console.log('No foods to select');
         }
 
@@ -156,7 +172,108 @@ export class FoodsComponent implements OnInit {
       this.selectedIndex = index;
       this.selectedFood = this.foods[index];
       console.log('Selected:', this.selectedFood.description);
+      this.populateMetadataFields(this.selectedFood);
     }
+  }
+
+  // Populate metadata fields from selected food
+  private populateMetadataFields(food: Food): void {
+    this.shortDescriptionControl.setValue(food.shortDescription ?? null);
+    this.glycemicIndexControl.setValue(food.glycemicIndex ?? null);
+    this.glycemicLoadControl.setValue(food.glycemicLoad ?? null);
+
+    // Store original values for change detection
+    this.originalMetadata = {
+      shortDescription: food.shortDescription ?? null,
+      glycemicIndex: food.glycemicIndex ?? null,
+      glycemicLoad: food.glycemicLoad ?? null
+    };
+  }
+
+  // Clear metadata fields when no food selected
+  private clearMetadataFields(): void {
+    this.shortDescriptionControl.setValue(null);
+    this.glycemicIndexControl.setValue(null);
+    this.glycemicLoadControl.setValue(null);
+    this.originalMetadata = { shortDescription: null, glycemicIndex: null, glycemicLoad: null };
+  }
+
+  // Check if metadata has been modified
+  hasMetadataChanges(): boolean {
+    const currentShortDesc = this.shortDescriptionControl.value;
+    const currentGI = this.glycemicIndexControl.value;
+    const currentLoad = this.glycemicLoadControl.value;
+
+    return currentShortDesc !== this.originalMetadata.shortDescription ||
+           currentGI !== this.originalMetadata.glycemicIndex ||
+           currentLoad !== this.originalMetadata.glycemicLoad;
+  }
+
+  // Save metadata to backend
+  saveMetadata(): void {
+    if (!this.selectedFood?.id) {
+      this.snackBar.open('No food selected', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const update: FoodMetadataUpdate = {};
+
+    // Only include fields that have changed
+    const currentShortDesc = this.shortDescriptionControl.value;
+    const currentGI = this.glycemicIndexControl.value;
+    const currentLoad = this.glycemicLoadControl.value;
+
+    if (currentShortDesc !== this.originalMetadata.shortDescription) {
+      // Empty string means set to NULL
+      update.shortDescription = currentShortDesc === '' ? null : currentShortDesc;
+    }
+    if (currentGI !== this.originalMetadata.glycemicIndex) {
+      update.glycemicIndex = currentGI;
+    }
+    if (currentLoad !== this.originalMetadata.glycemicLoad) {
+      update.glycemicLoad = currentLoad;
+    }
+
+    // Check if there are any changes to save
+    if (Object.keys(update).length === 0) {
+      this.snackBar.open('No changes to save', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.isSavingMetadata = true;
+
+    this.foodsService.updateFoodMetadata(this.selectedFood.id, update).subscribe({
+      next: (updatedFood) => {
+        // Update the selected food with response
+        this.selectedFood = updatedFood;
+
+        // Update in the foods array too
+        const index = this.foods.findIndex(f => f.id === updatedFood.id);
+        if (index >= 0) {
+          this.foods[index] = updatedFood;
+        }
+
+        // Update original values to match saved state
+        this.originalMetadata = {
+          shortDescription: updatedFood.shortDescription ?? null,
+          glycemicIndex: updatedFood.glycemicIndex ?? null,
+          glycemicLoad: updatedFood.glycemicLoad ?? null
+        };
+
+        this.snackBar.open('Metadata saved successfully', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+          panelClass: ['info-snackbar']
+        });
+
+        this.isSavingMetadata = false;
+      },
+      error: (error: HttpErrorResponse) => {
+        this.isSavingMetadata = false;
+        this.handleError(error, 'Failed to save metadata');
+      }
+    });
   }
 
   // NEW: Handle keyboard navigation in the list
@@ -270,10 +387,8 @@ export class FoodsComponent implements OnInit {
   // NEW: Toggle between per-serving and per-100g display
   toggleServingMode() {
     this.showPerServing = !this.showPerServing;
-    // Force table to update by reassigning selectedFood reference
-    if (this.selectedFood) {
-      this.selectedFood = { ...this.selectedFood };
-    }
+    // Force Angular to re-render all nutrient values
+    this.cdr.detectChanges();
   }
 
   // NEW: Get current display unit for footer
