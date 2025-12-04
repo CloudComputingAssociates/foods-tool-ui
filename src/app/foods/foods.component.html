@@ -135,19 +135,21 @@
               <div class="footer-row">
                 <div class="footer-buttons">
                   <button mat-button
-                          class="serving-mode-btn"
-                          (click)="toggleServingMode()">
-                    {{showPerServing ? 'Per 100g' : 'Per Serving'}}
-                  </button>
-                  <button mat-button
                           class="all-nutrients-btn"
                           (click)="showAllNutrients()">
                     {{showingAllNutrients ? 'Less' : 'More Nutrients'}}
                   </button>
                 </div>
-                <div class="footer-labels">
-                  <div class="per-unit-label">{{getDisplayUnit()}}</div>
-                  <div class="serving-count-label">{{getServingLabel()}} {{getServingCount()}}</div>
+                <div class="footer-right">
+                  <button mat-button
+                          class="serving-mode-btn"
+                          (click)="toggleServingMode()">
+                    {{showPerServing ? 'Per 100g' : 'Per Serving'}}
+                  </button>
+                  <div class="footer-labels">
+                    <div class="per-unit-label">{{getDisplayUnit()}}</div>
+                    <div class="serving-count-label">{{getServingLabel()}} {{getServingCount()}}</div>
+                  </div>
                 </div>
               </div>
             </div>
