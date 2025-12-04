@@ -119,7 +119,7 @@
 
               <!-- Responsive table wrapper -->
               <div class="table-responsive">
-                <table mat-table [dataSource]="getNutrients(selectedFood)" class="nutrient-table">
+                <table mat-table [dataSource]="nutrientTableData" class="nutrient-table">
                   <ng-container matColumnDef="label">
                     <th mat-header-cell *matHeaderCellDef> Nutrient </th>
                     <td mat-cell *matCellDef="let nutrient"> {{nutrient.label}} </td>

@@ -43,6 +43,9 @@ export class FoodsComponent implements OnInit {
   showingAllNutrients = false;
   showPerServing = true;  // Toggle for per-serving vs per-100g (default: per serving, sticky)
 
+  // Cached nutrient data for the table (recalculated when food or mode changes)
+  nutrientTableData: SimplifiedNutrient[] = [];
+
   // Metadata form controls
   shortDescriptionControl = new FormControl<string | null>(null);
   glycemicIndexControl = new FormControl<number | null>(null);
@@ -138,10 +141,12 @@ export class FoodsComponent implements OnInit {
           this.selectedFood = this.foods[0];
           console.log('Selected first food:', this.selectedFood?.description);
           this.populateMetadataFields(this.selectedFood);
+          this.updateNutrientTableData();
         } else {
           this.selectedFood = null;
           this.selectedIndex = -1;
           this.clearMetadataFields();
+          this.nutrientTableData = [];
           console.log('No foods to select');
         }
 
@@ -173,6 +178,7 @@ export class FoodsComponent implements OnInit {
       this.selectedFood = this.foods[index];
       console.log('Selected:', this.selectedFood.description);
       this.populateMetadataFields(this.selectedFood);
+      this.updateNutrientTableData();
     }
   }
 
@@ -387,8 +393,13 @@ export class FoodsComponent implements OnInit {
   // NEW: Toggle between per-serving and per-100g display
   toggleServingMode() {
     this.showPerServing = !this.showPerServing;
-    // Force Angular to re-render all nutrient values
-    this.cdr.detectChanges();
+    // Recalculate nutrients for the table
+    this.updateNutrientTableData();
+  }
+
+  // Update the cached nutrient data for the mat-table
+  private updateNutrientTableData(): void {
+    this.nutrientTableData = this.getNutrients(this.selectedFood);
   }
 
   // NEW: Get current display unit for footer
@@ -471,15 +482,13 @@ export class FoodsComponent implements OnInit {
     return this.selectedFood?.nutritionFactsStatus || null;
   }
 
-  // Image URL methods
+  // Image URL methods - images are already full URLs from CDN
   public nutritionImageUrl(): string | null {
-    return this.selectedFood?.nutritionFactsImage ? 
-      this.foodsService.getImageUrl(this.selectedFood.nutritionFactsImage) : null;
+    return this.selectedFood?.nutritionFactsImage || null;
   }
 
   public productImageUrl(): string | null {
-    return this.selectedFood?.foodImage ? 
-      this.foodsService.getImageUrl(this.selectedFood.foodImage) : null;
+    return this.selectedFood?.foodImage || null;
   }
 
   // Helper methods to check if images exist
