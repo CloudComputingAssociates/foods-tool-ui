@@ -348,14 +348,21 @@ export class FoodsComponent implements OnInit {
     const nf = food.nutritionFacts;
     const nutrients: SimplifiedNutrient[] = [];
 
-    // Data is per 100g. When showing per-serving, multiply by servingSizeMultiplicand.
-    // servingSizeMultiplicand = servingSizeG / 100 (e.g., 30g serving = 0.3)
-    const multiplier = this.showPerServing ? (food.servingSizeMultiplicand || 1) : 1;
+    // Data is per 100g. When showing per-serving, multiply by servingSizeG/100.
+    // Calculate multiplier from servingSizeG if available, otherwise use servingSizeMultiplicand
+    let multiplier = 1;
+    if (this.showPerServing) {
+      if (nf.servingSizeG && nf.servingSizeG > 0) {
+        multiplier = nf.servingSizeG / 100;
+      } else if (food.servingSizeMultiplicand && food.servingSizeMultiplicand !== 1) {
+        multiplier = food.servingSizeMultiplicand;
+      }
+    }
 
     console.log('getNutrients - showPerServing:', this.showPerServing,
       'multiplier:', multiplier,
       'servingSizeMultiplicand:', food.servingSizeMultiplicand,
-      'servingSizeG:', food.nutritionFacts?.servingSizeG,
+      'servingSizeG:', nf.servingSizeG,
       'food.id:', food.id);
 
     // Reordered: Protein, Fat, Carbs, Calories
