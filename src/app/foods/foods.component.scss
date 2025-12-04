@@ -566,29 +566,24 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: 150px;
         background: white;
 
-        @media (max-width: $mobile-breakpoint) {
-          padding: 8px;
-          min-height: 120px;
-        }
-
         .food-image {
-          max-width: 100%;
           border-radius: 4px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
           object-fit: contain;
 
           &.nutrition-image {
-            max-width: 280px;
-            max-height: 280px;
+            width: 180px;
+            height: auto;
+            max-height: 220px;
           }
 
-          // Product image: 240px = 2/3 of Samsung S23 screen width (360dp)
+          // Product image: small fixed size
           &.product-image {
-            max-width: 240px;
-            max-height: 240px;
+            width: 150px;
+            height: auto;
+            max-height: 150px;
           }
         }
       }
