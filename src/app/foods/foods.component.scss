@@ -567,11 +567,14 @@
         justify-content: center;
         align-items: center;
         background: white;
+        max-width: 200px;
+        margin: 0 auto;
 
         .food-image {
           border-radius: 4px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
           object-fit: contain;
+          max-width: 100%;
 
           &.nutrition-image {
             width: 180px;
@@ -581,15 +584,25 @@
 
           // Product image: small fixed size
           &.product-image {
-            width: 150px;
-            height: auto;
-            max-height: 150px;
+            width: 150px !important;
+            height: auto !important;
+            max-height: 150px !important;
           }
         }
       }
     }
   }
+}
 
+// Global override for product image sizing (outside nested context)
+.product-image {
+  width: 150px !important;
+  height: auto !important;
+  max-height: 150px !important;
+  object-fit: contain !important;
+}
+
+.panel-content {
   app-uri-list {
     width: 100%;
     margin-top: 20px;

@@ -7,7 +7,8 @@
       "Bash(Select-String -Pattern \"budget|error|warning|exceeded|complete\" -Context 0,1)",
       "Bash(mv:*)",
       "Bash(cat:*)",
-      "Bash(md5sum:*)"
+      "Bash(md5sum:*)",
+      "Bash(npx sass:*)"
     ],
     "deny": [],
     "ask": []
