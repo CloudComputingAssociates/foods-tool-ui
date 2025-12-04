@@ -562,37 +562,33 @@
       }
 
       .image-wrapper {
-        padding: 16px;
+        padding: 12px;
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: 200px;
+        min-height: 150px;
         background: white;
 
         @media (max-width: $mobile-breakpoint) {
-          padding: 12px;
-          min-height: 150px;
+          padding: 8px;
+          min-height: 120px;
         }
 
         .food-image {
           max-width: 100%;
-          max-height: 300px;
-          width: auto;
-          height: auto;
           border-radius: 4px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
           object-fit: contain;
 
-          @media (max-width: $mobile-breakpoint) {
-            max-height: 200px;
-          }
-
           &.nutrition-image {
-            max-height: 350px;
+            max-width: 280px;
+            max-height: 280px;
           }
 
+          // Product image: 240px = 2/3 of Samsung S23 screen width (360dp)
           &.product-image {
-            max-height: 250px;
+            max-width: 240px;
+            max-height: 240px;
           }
         }
       }
