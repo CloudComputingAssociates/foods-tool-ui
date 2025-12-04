@@ -352,7 +352,11 @@ export class FoodsComponent implements OnInit {
     // servingSizeMultiplicand = servingSizeG / 100 (e.g., 30g serving = 0.3)
     const multiplier = this.showPerServing ? (food.servingSizeMultiplicand || 1) : 1;
 
-    console.log('getNutrients - showPerServing:', this.showPerServing, 'multiplier:', multiplier, 'servingSizeMultiplicand:', food.servingSizeMultiplicand);
+    console.log('getNutrients - showPerServing:', this.showPerServing,
+      'multiplier:', multiplier,
+      'servingSizeMultiplicand:', food.servingSizeMultiplicand,
+      'servingSizeG:', food.nutritionFacts?.servingSizeG,
+      'food.id:', food.id);
 
     // Reordered: Protein, Fat, Carbs, Calories
     if (typeof nf.proteinG === 'number') {
@@ -403,7 +407,9 @@ export class FoodsComponent implements OnInit {
 
   // Update the cached nutrient data for the mat-table
   private updateNutrientTableData(): void {
-    this.nutrientTableData = this.getNutrients(this.selectedFood);
+    // Create a new array reference to trigger Angular change detection
+    this.nutrientTableData = [...this.getNutrients(this.selectedFood)];
+    console.log('updateNutrientTableData called, new data:', this.nutrientTableData);
   }
 
   // NEW: Get current display unit for footer
