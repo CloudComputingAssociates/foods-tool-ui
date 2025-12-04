@@ -448,7 +448,18 @@ export class FoodsComponent implements OnInit {
   // NEW: Calculate nutrient value based on display mode
   public calculateNutrientValue(value: number): number {
     if (!this.selectedFood) return value;
-    const multiplier = this.showPerServing ? (this.selectedFood.servingSizeMultiplicand || 1) : 1;
+
+    // Use same multiplier logic as getNutrients()
+    let multiplier = 1;
+    if (this.showPerServing) {
+      const nf = this.selectedFood.nutritionFacts;
+      if (nf?.servingSizeG && nf.servingSizeG > 0) {
+        multiplier = nf.servingSizeG / 100;
+      } else if (this.selectedFood.servingSizeMultiplicand && this.selectedFood.servingSizeMultiplicand !== 1) {
+        multiplier = this.selectedFood.servingSizeMultiplicand;
+      }
+    }
+
     return Math.round(value * multiplier * 10) / 10;
   }
 

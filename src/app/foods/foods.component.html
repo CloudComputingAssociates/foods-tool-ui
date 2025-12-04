@@ -73,31 +73,24 @@
         <div class="panel-content">
           <div class="nutrition-section">
             <div class="main-nutrients">
-              <!-- Row 1: Food ID, GI, Load, More Nutrients button, Save -->
+              <!-- Row 1: Food ID, GI, Load, Save -->
               <div class="metadata-row">
-                <mat-form-field appearance="outline" class="food-id-field">
+                <mat-form-field appearance="outline" class="food-id-field" floatLabel="always">
                   <mat-label>Food ID</mat-label>
                   <input matInput [value]="getDisplayFoodId()" readonly>
                 </mat-form-field>
-                <mat-form-field appearance="outline" class="gi-field">
+                <mat-form-field appearance="outline" class="gi-field" floatLabel="always">
                   <mat-label>GI</mat-label>
                   <input matInput
                          type="number"
-                         [formControl]="glycemicIndexControl"
-                         placeholder="0-100+">
+                         [formControl]="glycemicIndexControl">
                 </mat-form-field>
-                <mat-form-field appearance="outline" class="load-field">
+                <mat-form-field appearance="outline" class="load-field" floatLabel="always">
                   <mat-label>Load</mat-label>
                   <input matInput
                          type="number"
-                         [formControl]="glycemicLoadControl"
-                         placeholder="0-50+">
+                         [formControl]="glycemicLoadControl">
                 </mat-form-field>
-                <button mat-button
-                        class="all-nutrients-btn"
-                        (click)="showAllNutrients()">
-                  {{showingAllNutrients ? 'Less' : 'More Nutrients'}}
-                </button>
                 <button mat-raised-button
                         color="primary"
                         class="save-metadata-btn"
@@ -108,12 +101,11 @@
               </div>
               <!-- Row 2: Short Description (full width) -->
               <div class="short-desc-row">
-                <mat-form-field appearance="outline" class="short-desc-field">
+                <mat-form-field appearance="outline" class="short-desc-field" floatLabel="always">
                   <mat-label>Short Description</mat-label>
                   <input matInput
                          [formControl]="shortDescriptionControl"
-                         maxlength="200"
-                         placeholder="Max 200 chars">
+                         maxlength="200">
                 </mat-form-field>
               </div>
 
@@ -141,11 +133,18 @@
               </div>
 
               <div class="footer-row">
-                <button mat-button 
-                        class="serving-mode-btn"
-                        (click)="toggleServingMode()">
-                  {{showPerServing ? 'Per 100g' : 'Per Serving'}}
-                </button>
+                <div class="footer-buttons">
+                  <button mat-button
+                          class="serving-mode-btn"
+                          (click)="toggleServingMode()">
+                    {{showPerServing ? 'Per 100g' : 'Per Serving'}}
+                  </button>
+                  <button mat-button
+                          class="all-nutrients-btn"
+                          (click)="showAllNutrients()">
+                    {{showingAllNutrients ? 'Less' : 'More Nutrients'}}
+                  </button>
+                </div>
                 <div class="footer-labels">
                   <div class="per-unit-label">{{getDisplayUnit()}}</div>
                   <div class="serving-count-label">{{getServingLabel()}} {{getServingCount()}}</div>
@@ -154,7 +153,7 @@
             </div>
 
             <!-- Mobile-optimized all nutrients view -->
-            <div class="all-nutrients" 
+            <div class="all-nutrients"
                  *ngIf="showingAllNutrients">
               <mat-list *ngIf="selectedFood.nutritionFacts">
                 <mat-list-item>

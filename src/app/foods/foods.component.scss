@@ -262,16 +262,16 @@
     .main-nutrients {
       flex: 1;
 
-      // Metadata row with Food ID, GI, Load, More Nutrients, Save
+      // Metadata row with Food ID, GI, Load, Save
       .metadata-row {
         display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: center;
+        flex-wrap: nowrap;
+        gap: 8px;
+        align-items: flex-start;
         margin-bottom: 8px;
 
         .food-id-field {
-          width: 100px;
+          width: 90px;
           flex-shrink: 0;
 
           input {
@@ -282,7 +282,7 @@
 
         .gi-field,
         .load-field {
-          width: 80px;
+          width: 70px;
           flex-shrink: 0;
 
           input {
@@ -290,13 +290,10 @@
           }
         }
 
-        .all-nutrients-btn {
-          height: 56px;
-        }
-
         .save-metadata-btn {
           height: 56px;
-          min-width: 80px;
+          min-width: 70px;
+          flex-shrink: 0;
 
           &:disabled {
             opacity: 0.6;
@@ -304,18 +301,18 @@
         }
 
         @media (max-width: $mobile-breakpoint) {
-          flex-direction: column;
-          align-items: stretch;
+          flex-wrap: wrap;
 
-          .food-id-field,
-          .gi-field,
-          .load-field {
-            width: 100%;
+          .food-id-field {
+            width: 90px;
           }
 
-          .all-nutrients-btn,
+          .gi-field,
+          .load-field {
+            width: 70px;
+          }
+
           .save-metadata-btn {
-            width: 100%;
             height: 48px;
           }
         }
@@ -373,11 +370,31 @@
           padding-right: 8px;
         }
 
+        .footer-buttons {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .all-nutrients-btn {
+          background: #f5f5f5;
+          border: 1px solid #ddd;
+          color: #333;
+          padding: 6px 14px;
+          border-radius: 4px;
+          font-size: 13px;
+          cursor: pointer;
+
+          &:hover {
+            background: #e8e8e8;
+          }
+        }
+
         .footer-labels {
           text-align: right;
           font-size: 14px;
           line-height: 1.4;
-          
+
           @media (max-width: $mobile-breakpoint) {
             font-size: 12px;
           }
@@ -389,7 +406,7 @@
           .serving-count-label {
             color: #666;
             font-size: 13px;
-            
+
             @media (max-width: $mobile-breakpoint) {
               font-size: 11px;
             }
@@ -625,30 +642,6 @@
   }
 }
 
-.all-nutrients-btn {
-  position: relative;
-  background: #1976d2;
-  color: white !important;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1),
-              0 1px 3px rgba(0,0,0,0.08);
-  transform: translateY(0);
-  transition: all 0.2s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 7px 14px rgba(0,0,0,0.1),
-                0 3px 6px rgba(0,0,0,0.08);
-  }
-
-  &:active {
-    transform: translateY(1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1),
-                0 1px 2px rgba(0,0,0,0.08);
-  }
-}
 
 ::ng-deep .mat-expansion-panel-header {
   @media (max-width: $mobile-breakpoint) {
