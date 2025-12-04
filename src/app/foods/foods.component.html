@@ -73,18 +73,11 @@
         <div class="panel-content">
           <div class="nutrition-section">
             <div class="main-nutrients">
-              <!-- Row 1: Food ID, ShortDescription, GI, Load, More Nutrients button -->
+              <!-- Row 1: Food ID, GI, Load, More Nutrients button, Save -->
               <div class="metadata-row">
                 <mat-form-field appearance="outline" class="food-id-field">
                   <mat-label>Food ID</mat-label>
                   <input matInput [value]="getDisplayFoodId()" readonly>
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="short-desc-field">
-                  <mat-label>Short Description</mat-label>
-                  <input matInput
-                         [formControl]="shortDescriptionControl"
-                         maxlength="200"
-                         placeholder="Max 200 chars">
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="gi-field">
                   <mat-label>GI</mat-label>
@@ -103,11 +96,8 @@
                 <button mat-button
                         class="all-nutrients-btn"
                         (click)="showAllNutrients()">
-                  {{showingAllNutrients ? 'Hide Nutrients' : 'Show All Nutrients'}}
+                  {{showingAllNutrients ? 'Less' : 'More Nutrients'}}
                 </button>
-              </div>
-              <!-- Row 2: Save button -->
-              <div class="save-row">
                 <button mat-raised-button
                         color="primary"
                         class="save-metadata-btn"
@@ -115,6 +105,16 @@
                         [disabled]="isSavingMetadata || !hasMetadataChanges()">
                   {{isSavingMetadata ? 'Saving...' : 'Save'}}
                 </button>
+              </div>
+              <!-- Row 2: Short Description (full width) -->
+              <div class="short-desc-row">
+                <mat-form-field appearance="outline" class="short-desc-field">
+                  <mat-label>Short Description</mat-label>
+                  <input matInput
+                         [formControl]="shortDescriptionControl"
+                         maxlength="200"
+                         placeholder="Max 200 chars">
+                </mat-form-field>
               </div>
 
               <!-- Responsive table wrapper -->

@@ -339,6 +339,7 @@ export class FoodsComponent implements OnInit {
   }
 
   // Work with nutritionFacts structure from API
+  // Data from API is stored per 100g. servingSizeMultiplicand converts to per-serving.
   public getNutrients(food: any): SimplifiedNutrient[] {
     if (!food?.nutritionFacts) {
       return [];
@@ -347,8 +348,11 @@ export class FoodsComponent implements OnInit {
     const nf = food.nutritionFacts;
     const nutrients: SimplifiedNutrient[] = [];
 
-    // Determine multiplier based on display mode
+    // Data is per 100g. When showing per-serving, multiply by servingSizeMultiplicand.
+    // servingSizeMultiplicand = servingSizeG / 100 (e.g., 30g serving = 0.3)
     const multiplier = this.showPerServing ? (food.servingSizeMultiplicand || 1) : 1;
+
+    console.log('getNutrients - showPerServing:', this.showPerServing, 'multiplier:', multiplier, 'servingSizeMultiplicand:', food.servingSizeMultiplicand);
 
     // Reordered: Protein, Fat, Carbs, Calories
     if (typeof nf.proteinG === 'number') {
