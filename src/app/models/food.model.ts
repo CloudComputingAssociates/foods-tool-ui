@@ -5,6 +5,7 @@ export interface Food {
   shortDescription?: string | null;
   glycemicIndex?: number | null;
   glycemicLoad?: number | null;
+  yehApproved?: boolean;
   nutritionFacts?: NutritionFacts;
   servingSizeMultiplicand?: number;
   brandInfo?: BrandInfo;
@@ -18,6 +19,7 @@ export interface FoodMetadataUpdate {
   shortDescription?: string | null;
   glycemicIndex?: number | null;
   glycemicLoad?: number | null;
+  yehApproved?: boolean;
 }
 
 export interface NutritionFacts {

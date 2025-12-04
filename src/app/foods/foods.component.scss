@@ -318,6 +318,16 @@
         }
       }
 
+      // YEH Approved checkbox row (between metadata and short description)
+      .yeh-approved-metadata-row {
+        margin-bottom: 12px;
+        padding-left: 4px;
+
+        mat-checkbox {
+          font-size: 14px;
+        }
+      }
+
       // Short description row (full width below metadata row)
       .short-desc-row {
         margin-bottom: 16px;

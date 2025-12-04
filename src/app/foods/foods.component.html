@@ -99,7 +99,11 @@
                   {{isSavingMetadata ? 'Saving...' : 'Save'}}
                 </button>
               </div>
-              <!-- Row 2: Short Description (full width) -->
+              <!-- Row 2: YEH Approved checkbox -->
+              <div class="yeh-approved-metadata-row">
+                <mat-checkbox [formControl]="yehApprovedMetadataControl">YEH Approved Food</mat-checkbox>
+              </div>
+              <!-- Row 3: Short Description (full width) -->
               <div class="short-desc-row">
                 <mat-form-field appearance="outline" class="short-desc-field" floatLabel="always">
                   <mat-label>Short Description</mat-label>

@@ -50,13 +50,15 @@ export class FoodsComponent implements OnInit {
   shortDescriptionControl = new FormControl<string | null>(null);
   glycemicIndexControl = new FormControl<number | null>(null);
   glycemicLoadControl = new FormControl<number | null>(null);
+  yehApprovedMetadataControl = new FormControl<boolean>(false);
   isSavingMetadata = false;
 
   // Track original values to detect changes
-  private originalMetadata: { shortDescription: string | null; glycemicIndex: number | null; glycemicLoad: number | null } = {
+  private originalMetadata: { shortDescription: string | null; glycemicIndex: number | null; glycemicLoad: number | null; yehApproved: boolean } = {
     shortDescription: null,
     glycemicIndex: null,
-    glycemicLoad: null
+    glycemicLoad: null,
+    yehApproved: false
   };
 
   constructor(
@@ -187,12 +189,14 @@ export class FoodsComponent implements OnInit {
     this.shortDescriptionControl.setValue(food.shortDescription ?? null);
     this.glycemicIndexControl.setValue(food.glycemicIndex ?? null);
     this.glycemicLoadControl.setValue(food.glycemicLoad ?? null);
+    this.yehApprovedMetadataControl.setValue(food.yehApproved ?? false);
 
     // Store original values for change detection
     this.originalMetadata = {
       shortDescription: food.shortDescription ?? null,
       glycemicIndex: food.glycemicIndex ?? null,
-      glycemicLoad: food.glycemicLoad ?? null
+      glycemicLoad: food.glycemicLoad ?? null,
+      yehApproved: food.yehApproved ?? false
     };
   }
 
@@ -201,7 +205,8 @@ export class FoodsComponent implements OnInit {
     this.shortDescriptionControl.setValue(null);
     this.glycemicIndexControl.setValue(null);
     this.glycemicLoadControl.setValue(null);
-    this.originalMetadata = { shortDescription: null, glycemicIndex: null, glycemicLoad: null };
+    this.yehApprovedMetadataControl.setValue(false);
+    this.originalMetadata = { shortDescription: null, glycemicIndex: null, glycemicLoad: null, yehApproved: false };
   }
 
   // Check if metadata has been modified
@@ -209,10 +214,12 @@ export class FoodsComponent implements OnInit {
     const currentShortDesc = this.shortDescriptionControl.value;
     const currentGI = this.glycemicIndexControl.value;
     const currentLoad = this.glycemicLoadControl.value;
+    const currentYehApproved = this.yehApprovedMetadataControl.value;
 
     return currentShortDesc !== this.originalMetadata.shortDescription ||
            currentGI !== this.originalMetadata.glycemicIndex ||
-           currentLoad !== this.originalMetadata.glycemicLoad;
+           currentLoad !== this.originalMetadata.glycemicLoad ||
+           currentYehApproved !== this.originalMetadata.yehApproved;
   }
 
   // Save metadata to backend
@@ -228,6 +235,7 @@ export class FoodsComponent implements OnInit {
     const currentShortDesc = this.shortDescriptionControl.value;
     const currentGI = this.glycemicIndexControl.value;
     const currentLoad = this.glycemicLoadControl.value;
+    const currentYehApproved = this.yehApprovedMetadataControl.value;
 
     if (currentShortDesc !== this.originalMetadata.shortDescription) {
       // Empty string means set to NULL
@@ -238,6 +246,9 @@ export class FoodsComponent implements OnInit {
     }
     if (currentLoad !== this.originalMetadata.glycemicLoad) {
       update.glycemicLoad = currentLoad;
+    }
+    if (currentYehApproved !== this.originalMetadata.yehApproved) {
+      update.yehApproved = currentYehApproved ?? false;
     }
 
     // Check if there are any changes to save
@@ -263,7 +274,8 @@ export class FoodsComponent implements OnInit {
         this.originalMetadata = {
           shortDescription: updatedFood.shortDescription ?? null,
           glycemicIndex: updatedFood.glycemicIndex ?? null,
-          glycemicLoad: updatedFood.glycemicLoad ?? null
+          glycemicLoad: updatedFood.glycemicLoad ?? null,
+          yehApproved: updatedFood.yehApproved ?? false
         };
 
         this.snackBar.open('Metadata saved successfully', 'Close', {
