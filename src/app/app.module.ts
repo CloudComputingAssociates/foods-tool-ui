@@ -2,7 +2,8 @@ import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { AppRoutingModule } from './app-routing.module';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { AuthHttpInterceptor } from '@auth0/auth0-angular';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { environment } from '../environments/environment.prod';
 import { FlexLayoutModule } from '@angular/flex-layout';
@@ -64,11 +65,16 @@ import { ImageUploadComponent } from './image-upload/image-upload.component';
         redirect_uri: environment.auth0.redirectUri
       },
       httpInterceptor: {
-        allowedList: []  // Empty array = don't attach tokens to any HTTP requests
+        allowedList: [
+          'https://yehapi.cloudcomputingassociates.net/api/*'
+        ]
       }
     })
   ],
-  providers: [YehApiService],
+  providers: [
+    YehApiService,
+    { provide: HTTP_INTERCEPTORS, useClass: AuthHttpInterceptor, multi: true }
+  ],
   bootstrap: [AppComponent],
   exports: [LoginComponent]
 })
