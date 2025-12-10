@@ -18,7 +18,7 @@ export class LoginComponent implements OnInit {
 
   loginClicked(loggedIn): void {
     if( loggedIn == true) {
-      this.auth.logout(); //{ returnTo: document.location.origin}
+      this.auth.logout({ logoutParams: { returnTo: window.location.origin } });
     }
     else { 
       this.auth.loginWithRedirect({
