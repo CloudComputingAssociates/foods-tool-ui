@@ -62,7 +62,8 @@ import { ImageUploadComponent } from './image-upload/image-upload.component';
       domain: environment.auth0.domain,
       clientId: environment.auth0.clientId,
       authorizationParams: {
-        redirect_uri: environment.auth0.redirectUri
+        redirect_uri: environment.auth0.redirectUri,
+        audience: 'https://yehapi.cloudcomputingassociates.net'
       },
       httpInterceptor: {
         allowedList: [
