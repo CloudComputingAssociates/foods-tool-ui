@@ -6,6 +6,7 @@ interface ImageUploadResponse {
   success: boolean;
   nutritionImageUploaded: boolean;
   productImageUploaded: boolean;
+  ingredientsImageUploaded?: boolean;
   nutritionFactsStatus?: string;
   message: string;
   warnings?: string[];
@@ -32,14 +33,17 @@ export class ImageUploadComponent implements OnInit, OnChanges {
   isUploading = false;
   nutritionImageFile: File | null = null;
   productImageFile: File | null = null;
+  ingredientsImageFile: File | null = null;
 
   // Drag and drop states
   isDraggingNutrition = false;
   isDraggingProduct = false;
+  isDraggingIngredients = false;
 
   // Image preview URLs
   nutritionImagePreview: string | null = null;
   productImagePreview: string | null = null;
+  ingredientsImagePreview: string | null = null;
 
   constructor(
     private foodsService: YehApiService,
@@ -105,6 +109,27 @@ export class ImageUploadComponent implements OnInit, OnChanges {
     }
   }
 
+  // Drag and drop handlers for ingredients image
+  onIngredientsDragOver(event: DragEvent) {
+    event.preventDefault();
+    this.isDraggingIngredients = true;
+  }
+
+  onIngredientsDragLeave(event: DragEvent) {
+    event.preventDefault();
+    this.isDraggingIngredients = false;
+  }
+
+  onIngredientsDrop(event: DragEvent) {
+    event.preventDefault();
+    this.isDraggingIngredients = false;
+
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      this.handleIngredientsFile(files[0]);
+    }
+  }
+
   // File input handlers
   onNutritionFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -117,6 +142,13 @@ export class ImageUploadComponent implements OnInit, OnChanges {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       this.handleProductFile(input.files[0]);
+    }
+  }
+
+  onIngredientsFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.handleIngredientsFile(input.files[0]);
     }
   }
 
@@ -151,6 +183,21 @@ export class ImageUploadComponent implements OnInit, OnChanges {
     }
   }
 
+  onIngredientsPaste(event: ClipboardEvent) {
+    const items = event.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile();
+          if (file) {
+            this.handleIngredientsFile(file);
+            event.preventDefault();
+          }
+        }
+      }
+    }
+  }
+
   // File handling
   private handleNutritionFile(file: File) {
     if (!this.validateFile(file)) return;
@@ -164,6 +211,13 @@ export class ImageUploadComponent implements OnInit, OnChanges {
 
     this.productImageFile = file;
     this.createImagePreview(file, 'product');
+  }
+
+  private handleIngredientsFile(file: File) {
+    if (!this.validateFile(file)) return;
+
+    this.ingredientsImageFile = file;
+    this.createImagePreview(file, 'ingredients');
   }
 
   private validateFile(file: File): boolean {
@@ -181,14 +235,16 @@ export class ImageUploadComponent implements OnInit, OnChanges {
     return true;
   }
 
-  private createImagePreview(file: File, type: 'nutrition' | 'product') {
+  private createImagePreview(file: File, type: 'nutrition' | 'product' | 'ingredients') {
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
       if (type === 'nutrition') {
         this.nutritionImagePreview = result;
-      } else {
+      } else if (type === 'product') {
         this.productImagePreview = result;
+      } else {
+        this.ingredientsImagePreview = result;
       }
     };
     reader.readAsDataURL(file);
@@ -209,29 +265,31 @@ export class ImageUploadComponent implements OnInit, OnChanges {
       : null;
   }
 
+  removeIngredientsImage() {
+    this.ingredientsImageFile = null;
+    this.ingredientsImagePreview = null;
+  }
+
   // Clear all images (UI only - does not delete from server)
   clearAllImages() {
     this.nutritionImageFile = null;
     this.productImageFile = null;
+    this.ingredientsImageFile = null;
     this.nutritionImagePreview = null;
     this.productImagePreview = null;
+    this.ingredientsImagePreview = null;
   }
 
   // Upload images
   async uploadImages() {
-    if (!this.nutritionImageFile && !this.productImageFile) {
+    if (!this.nutritionImageFile && !this.productImageFile && !this.ingredientsImageFile) {
       this.snackBar.open('Please select at least one image to upload', 'Close', { duration: 3000 });
       return;
     }
 
-    // Nutrition image requires description, Product image requires foodId
-    if (this.nutritionImageFile && !this.foodDescription) {
-      this.snackBar.open('No food description for nutrition image upload', 'Close', { duration: 3000 });
-      return;
-    }
-
-    if (this.productImageFile && !this.foodId) {
-      this.snackBar.open('No Food ID for product image upload', 'Close', { duration: 3000 });
+    // All image uploads require foodId (food must already exist)
+    if ((this.nutritionImageFile || this.ingredientsImageFile || this.productImageFile) && !this.foodId) {
+      this.snackBar.open('No Food ID for image upload', 'Close', { duration: 3000 });
       return;
     }
 
@@ -240,19 +298,32 @@ export class ImageUploadComponent implements OnInit, OnChanges {
     try {
       let nutritionUploaded = false;
       let productUploaded = false;
+      let ingredientsUploaded = false;
       const warnings: string[] = [];
 
-      // Upload nutrition image if present (uses description)
-      if (this.nutritionImageFile) {
+      // Upload nutrition image if present (uses foodId)
+      // Ingredients image is uploaded together with nutrition image
+      if (this.nutritionImageFile && this.foodId) {
         try {
+          const options: { ingredientsImage?: File } = {};
+          if (this.ingredientsImageFile) {
+            options.ingredientsImage = this.ingredientsImageFile;
+          }
+
           const nutritionResponse = await this.foodsService.uploadNutritionImage(
-            this.foodDescription,
-            this.nutritionImageFile
+            this.foodId,
+            this.nutritionImageFile,
+            options
           ).toPromise();
 
           if (nutritionResponse?.success) {
             nutritionUploaded = true;
             this.nutritionImageFile = null;
+            if (this.ingredientsImageFile) {
+              ingredientsUploaded = true;
+              this.ingredientsImageFile = null;
+              this.ingredientsImagePreview = null;
+            }
           }
         } catch (nutritionError: any) {
           console.error('Nutrition image upload error:', nutritionError);
@@ -280,10 +351,11 @@ export class ImageUploadComponent implements OnInit, OnChanges {
 
       // Build response
       const response: ImageUploadResponse = {
-        success: nutritionUploaded || productUploaded,
+        success: nutritionUploaded || productUploaded || ingredientsUploaded,
         nutritionImageUploaded: nutritionUploaded,
         productImageUploaded: productUploaded,
-        message: this.buildUploadMessage(nutritionUploaded, productUploaded),
+        ingredientsImageUploaded: ingredientsUploaded,
+        message: this.buildUploadMessage(nutritionUploaded, productUploaded, ingredientsUploaded),
         warnings: warnings.length > 0 ? warnings : undefined
       };
 
@@ -304,25 +376,29 @@ export class ImageUploadComponent implements OnInit, OnChanges {
     }
   }
 
-  private buildUploadMessage(nutritionUploaded: boolean, productUploaded: boolean): string {
-    if (nutritionUploaded && productUploaded) {
-      return 'Both images uploaded successfully!';
-    } else if (nutritionUploaded) {
-      return 'Nutrition facts image uploaded successfully!';
-    } else if (productUploaded) {
-      return 'Product image uploaded successfully!';
+  private buildUploadMessage(nutritionUploaded: boolean, productUploaded: boolean, ingredientsUploaded: boolean = false): string {
+    const uploaded: string[] = [];
+    if (nutritionUploaded) uploaded.push('Nutrition facts');
+    if (ingredientsUploaded) uploaded.push('Ingredients');
+    if (productUploaded) uploaded.push('Product');
+
+    if (uploaded.length === 0) {
+      return 'No images were uploaded';
+    } else if (uploaded.length === 1) {
+      return `${uploaded[0]} image uploaded successfully!`;
+    } else {
+      return `${uploaded.join(', ')} images uploaded successfully!`;
     }
-    return 'No images were uploaded';
   }
 
   // Check if there are files ready to upload
   get hasFilesToUpload(): boolean {
-    return !!(this.nutritionImageFile || this.productImageFile);
+    return !!(this.nutritionImageFile || this.productImageFile || this.ingredientsImageFile);
   }
 
   // Check if there are any images to clear
   get hasImagesToClear(): boolean {
-    return !!(this.nutritionImagePreview || this.productImagePreview);
+    return !!(this.nutritionImagePreview || this.productImagePreview || this.ingredientsImagePreview);
   }
 
   // Get processing status display

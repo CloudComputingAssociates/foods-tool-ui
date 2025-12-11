@@ -124,6 +124,62 @@
       </div>
     </div>
 
+    <!-- Ingredients Image Section -->
+    <div class="upload-section">
+      <h3 class="section-title">
+        <mat-icon>list_alt</mat-icon>
+        Ingredients
+      </h3>
+
+      <!-- Upload Zone -->
+      <div class="upload-zone"
+           [class.dragging]="isDraggingIngredients"
+           [class.has-image]="ingredientsImagePreview"
+           (dragover)="onIngredientsDragOver($event)"
+           (dragleave)="onIngredientsDragLeave($event)"
+           (drop)="onIngredientsDrop($event)"
+           (paste)="onIngredientsPaste($event)"
+           tabindex="0">
+
+        <!-- Image Preview -->
+        <div class="image-preview" *ngIf="ingredientsImagePreview">
+          <img [src]="ingredientsImagePreview" alt="Ingredients Image Preview">
+          <div class="image-overlay">
+            <button mat-icon-button
+                    color="warn"
+                    class="remove-btn"
+                    (click)="removeIngredientsImage()"
+                    *ngIf="ingredientsImageFile">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Upload Prompt -->
+        <div class="upload-prompt" *ngIf="!ingredientsImagePreview">
+          <mat-icon class="upload-icon">cloud_upload</mat-icon>
+          <p class="primary-text">Drop ingredients image here</p>
+          <p class="secondary-text">or paste from clipboard</p>
+          <button mat-button color="primary" class="browse-btn">
+            <mat-icon>folder_open</mat-icon>
+            Browse Files
+          </button>
+        </div>
+
+        <!-- Hidden File Input -->
+        <input type="file"
+               #ingredientsFileInput
+               accept="image/*"
+               (change)="onIngredientsFileSelected($event)"
+               style="display: none;">
+      </div>
+
+      <div class="file-info" *ngIf="ingredientsImageFile">
+        <mat-icon>attach_file</mat-icon>
+        <span>{{ ingredientsImageFile.name }} ({{ (ingredientsImageFile.size / 1024 / 1024).toFixed(1) }}MB)</span>
+      </div>
+    </div>
+
   </div>
 
   <!-- Upload and Clear Buttons -->

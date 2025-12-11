@@ -79,34 +79,18 @@ export class YehApiService {
   // ========================================
 
   uploadNutritionImage(
-    description: string,
+    foodId: number,
     nutritionImage: File,
     options?: {
       ingredientsImage?: File;
-      manufacturer?: string;
-      parentCompany?: string;
-      productLine?: string;
-      userId?: string;
     }
   ): Observable<NutritionUploadResponse> {
     const formData = new FormData();
-    formData.append('description', description);
+    formData.append('foodId', foodId.toString());
     formData.append('nutritionImage', nutritionImage);
 
     if (options?.ingredientsImage) {
       formData.append('ingredientsImage', options.ingredientsImage);
-    }
-    if (options?.manufacturer) {
-      formData.append('manufacturer', options.manufacturer);
-    }
-    if (options?.parentCompany) {
-      formData.append('parentCompany', options.parentCompany);
-    }
-    if (options?.productLine) {
-      formData.append('productLine', options.productLine);
-    }
-    if (options?.userId) {
-      formData.append('userId', options.userId);
     }
 
     return this.http.post<NutritionUploadResponse>(
