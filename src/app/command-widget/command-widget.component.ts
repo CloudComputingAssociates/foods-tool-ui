@@ -1,4 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import {
+  Component, OnInit, AfterViewInit, ViewChild, ElementRef, HostListener
+} from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RegiApiService } from '../services/regi-api.service';
@@ -12,7 +14,16 @@ import {
   templateUrl: './command-widget.component.html',
   styleUrls: ['./command-widget.component.scss']
 })
-export class CommandWidgetComponent implements OnInit {
+export class CommandWidgetComponent implements OnInit, AfterViewInit {
+
+  // ============= Splitter (top:Commands / bottom:Widgets) =============
+  @ViewChild('layoutContainer') layoutContainerRef!: ElementRef<HTMLElement>;
+  commandsHeightPx = 320;
+  readonly minSectionHeight = 120;
+  readonly splitterHeight = 8;
+  isDraggingSplitter = false;
+  private dragStartY = 0;
+  private dragStartCommandsHeight = 0;
 
   renderIntents: RenderIntent[] = ['bloom', 'zoom', 'speak'];
   httpMethods: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
@@ -39,6 +50,50 @@ export class CommandWidgetComponent implements OnInit {
   ngOnInit(): void {
     this.loadWidgets();
     this.loadCommands();
+  }
+
+  ngAfterViewInit(): void {
+    // Initial split: ~40% Commands / 60% Widgets, clamped to mins.
+    setTimeout(() => {
+      const h = this.layoutContainerRef?.nativeElement?.clientHeight ?? 800;
+      this.commandsHeightPx = this.clampSectionHeight(Math.round(h * 0.4));
+    }, 0);
+  }
+
+  // ============= Splitter drag =============
+
+  onSplitterMouseDown(ev: MouseEvent): void {
+    this.isDraggingSplitter = true;
+    this.dragStartY = ev.clientY;
+    this.dragStartCommandsHeight = this.commandsHeightPx;
+    ev.preventDefault();
+  }
+
+  @HostListener('document:mousemove', ['$event'])
+  onSplitterMouseMove(ev: MouseEvent): void {
+    if (!this.isDraggingSplitter) return;
+    const dy = ev.clientY - this.dragStartY;
+    this.commandsHeightPx = this.clampSectionHeight(this.dragStartCommandsHeight + dy);
+  }
+
+  @HostListener('document:mouseup')
+  onSplitterMouseUp(): void {
+    this.isDraggingSplitter = false;
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    // Re-clamp on viewport resize so mins stay honored.
+    this.commandsHeightPx = this.clampSectionHeight(this.commandsHeightPx);
+  }
+
+  private clampSectionHeight(px: number): number {
+    const h = this.layoutContainerRef?.nativeElement?.clientHeight ?? 800;
+    const max = h - this.splitterHeight - this.minSectionHeight;
+    if (max < this.minSectionHeight) return this.minSectionHeight; // tiny viewport fallback
+    if (px < this.minSectionHeight) return this.minSectionHeight;
+    if (px > max) return max;
+    return px;
   }
 
   // ==========================================================================
@@ -254,6 +309,15 @@ export class CommandWidgetComponent implements OnInit {
   selectCommand(c: Command): void {
     this.selectedCommand = c;
     this.originalSelectedCommand = this.deepClone(c);
+  }
+
+  toggleCommand(c: Command): void {
+    if (this.selectedCommand === c) {
+      this.selectedCommand = null;
+      this.originalSelectedCommand = null;
+    } else {
+      this.selectCommand(c);
+    }
   }
 
   newCommand(): void {

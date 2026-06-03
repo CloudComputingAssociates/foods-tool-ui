@@ -1,230 +1,61 @@
-<div class="command-widget-container">
+<div class="command-widget-container" #layoutContainer [class.dragging]="isDraggingSplitter">
 
-  <mat-tab-group class="inner-tabs" animationDuration="0ms">
+  <!-- =====================================================================
+       COMMANDS SECTION (TOP) — global catalog accordion
+       ===================================================================== -->
+  <section class="commands-section" [style.height.px]="commandsHeightPx">
 
-    <!-- ===================================================================== -->
-    <!-- WIDGETS                                                                -->
-    <!-- ===================================================================== -->
-    <mat-tab label="Widgets">
-      <div class="sub-tab-content">
-
-        <div class="filter-bar">
-          <span class="filter-title">Widgets</span>
-          <span class="hint-text">{{ widgets.length }} loaded</span>
-          <button mat-flat-button class="apply-btn" (click)="loadWidgets()"
-                  [disabled]="isLoadingWidgets" matTooltip="Reload">
-            <mat-icon>refresh</mat-icon>
-          </button>
-        </div>
-        <div class="new-row">
-          <button mat-flat-button class="new-btn" (click)="newWidget()" matTooltip="Add new widget">
-            <mat-icon>add</mat-icon>
-          </button>
-        </div>
-
-        <div *ngIf="isLoadingWidgets" class="loading-row">
-          <mat-spinner diameter="24"></mat-spinner><span>Loading...</span>
-        </div>
-
-        <!-- Vertical accordion: full-width rows, click to expand inline -->
-        <div class="widget-accordion" *ngIf="widgets.length > 0">
-          <div *ngFor="let w of widgets"
-               class="widget-row"
-               [class.expanded]="selectedWidget === w">
-
-            <div class="widget-row-header" (click)="toggleWidget(w)">
-              <mat-icon class="chevron">{{ selectedWidget === w ? 'expand_less' : 'expand_more' }}</mat-icon>
-              <span class="widget-row-name">{{ w.name || '(unnamed)' }}</span>
-              <span class="widget-row-meta">
-                {{ w.renderIntent }} · {{ w.commands.length }} mapping(s)
-              </span>
-              <span *ngIf="!w.isEnabled" class="disabled-tag">disabled</span>
-              <span *ngIf="!w.widgetId" class="disabled-tag new-tag">new</span>
-              <span class="widget-row-spacer"></span>
-              <span class="widget-row-id" *ngIf="w.widgetId">#{{ w.widgetId }}</span>
-            </div>
-
-            <div class="widget-row-body" *ngIf="selectedWidget === w">
-
-              <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-                <mat-label>Name</mat-label>
-                <input matInput [(ngModel)]="w.name" name="w-name-{{w.widgetId || 'new'}}">
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-                <mat-label>Description (routing scent)</mat-label>
-                <textarea matInput rows="2" [(ngModel)]="w.description" name="w-desc-{{w.widgetId || 'new'}}"></textarea>
-              </mat-form-field>
-
-              <div class="form-row two-col">
-                <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                  <mat-label>Render Intent</mat-label>
-                  <mat-select [(ngModel)]="w.renderIntent" name="w-render-{{w.widgetId || 'new'}}">
-                    <mat-option *ngFor="let v of renderIntents" [value]="v">{{ v }}</mat-option>
-                  </mat-select>
-                </mat-form-field>
-                <div class="checkbox-col">
-                  <mat-checkbox [(ngModel)]="w.isEnabled" name="w-enabled-{{w.widgetId || 'new'}}">Enabled</mat-checkbox>
-                  <span class="row-id-display" *ngIf="w.widgetId">ID: {{ w.widgetId }}</span>
-                </div>
-              </div>
-
-              <!-- Mapped Commands -->
-              <div class="section-header">
-                <mat-icon>link</mat-icon>
-                <span>Mapped Commands</span>
-                <span class="hint-text" *ngIf="commands.length === 0">
-                  No commands in the global catalog yet — add some in the Commands tab.
-                </span>
-              </div>
-
-              <div class="mapping-list">
-                <ng-container *ngFor="let cmd of commands">
-                  <ng-container *ngTemplateOutlet="mappingRow; context: { cmd: cmd, mapping: mappingFor(cmd.commandId) }"></ng-container>
-                </ng-container>
-              </div>
-
-              <ng-template #mappingRow let-cmd="cmd" let-mapping="mapping">
-                <div class="mapping-row" [class.unmapped]="!mapping">
-                  <div class="mapping-head">
-                    <mat-checkbox
-                      [checked]="!!mapping"
-                      (change)="toggleMapping(cmd.commandId, $event.checked)">
-                      <span class="mapping-name">{{ cmd.name }}</span>
-                      <span class="global-tag" *ngIf="!mapping">global</span>
-                      <span class="mapping-desc" *ngIf="cmd.description">— {{ truncate(cmd.description, 80) }}</span>
-                    </mat-checkbox>
-                  </div>
-
-                  <div class="mapping-fields" *ngIf="mapping">
-                    <div class="form-row two-col">
-                      <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                        <mat-label>Http Method</mat-label>
-                        <mat-select [(ngModel)]="mapping.httpMethod" name="m-method-{{w.widgetId || 'new'}}-{{cmd.commandId}}"
-                                    (selectionChange)="onMappingMethodChange(mapping)">
-                          <mat-option [value]="null">(none — surfacing)</mat-option>
-                          <mat-option *ngFor="let v of httpMethods" [value]="v">{{ v }}</mat-option>
-                        </mat-select>
-                      </mat-form-field>
-                      <div class="checkbox-col">
-                        <mat-checkbox [(ngModel)]="mapping.requiresConfirmation" name="m-conf-{{w.widgetId || 'new'}}-{{cmd.commandId}}">
-                          Requires Confirmation
-                        </mat-checkbox>
-                        <mat-checkbox [(ngModel)]="mapping.isEnabled" name="m-en-{{w.widgetId || 'new'}}-{{cmd.commandId}}">Enabled</mat-checkbox>
-                      </div>
-                    </div>
-
-                    <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-                      <mat-label>Api Endpoint</mat-label>
-                      <input matInput
-                             [(ngModel)]="mapping.apiEndpoint"
-                             name="m-ep-{{w.widgetId || 'new'}}-{{cmd.commandId}}"
-                             [disabled]="isSurfacing(mapping)"
-                             placeholder="/api/user/settings">
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-                      <mat-label>Body Template (JSON)</mat-label>
-                      <textarea matInput rows="2"
-                                [(ngModel)]="mapping.bodyTemplate"
-                                name="m-body-{{w.widgetId || 'new'}}-{{cmd.commandId}}"
-                                [disabled]="isSurfacing(mapping)"
-                                placeholder='{"goalWeight":"{value}"}'></textarea>
-                    </mat-form-field>
-                  </div>
-                </div>
-              </ng-template>
-
-              <!-- Actions -->
-              <div class="action-row">
-                <button mat-flat-button class="save-btn" (click)="saveAllWidgets()"
-                        [disabled]="isSavingWidgets || !hasAnyWidgetChanges()"
-                        matTooltip="Saves the ENTIRE widget collection (whole-collection replace).">
-                  <mat-icon>check</mat-icon>
-                  {{ isSavingWidgets ? 'Saving...' : 'Save' }}
-                </button>
-                <button mat-stroked-button class="undo-btn" (click)="undoSelectedWidget()"
-                        [disabled]="!hasSelectedWidgetChanges()"
-                        matTooltip="Revert this widget's edits">
-                  <mat-icon>close</mat-icon>
-                </button>
-                <button mat-stroked-button color="warn" (click)="deleteWidget()">Delete</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Slurp drop zone stub (disabled) — bottom of tab, full width -->
-        <div class="slurp-dropzone" aria-disabled="true">
-          <mat-icon>cloud_upload</mat-icon>
-          <span>Drop Flutter widget file to auto-map (coming soon)</span>
-        </div>
-
-        <div *ngIf="widgets.length === 0 && !isLoadingWidgets" class="empty-state">
-          <mat-icon>widgets</mat-icon>
-          <p>No widgets yet. Click + to create one.</p>
-        </div>
+    <header class="section-pinned-header">
+      <div class="header-title-row">
+        <span class="section-title">Commands</span>
+        <span class="hint-text">{{ commands.length }} in catalog</span>
+        <span class="header-spacer"></span>
+        <button mat-flat-button class="apply-btn" (click)="loadCommands()"
+                [disabled]="isLoadingCommands" matTooltip="Reload">
+          <mat-icon>refresh</mat-icon>
+        </button>
+        <button mat-flat-button class="new-btn" (click)="newCommand()" matTooltip="Add new command">
+          <mat-icon>add</mat-icon>
+        </button>
       </div>
-    </mat-tab>
+    </header>
 
-    <!-- ===================================================================== -->
-    <!-- COMMANDS                                                               -->
-    <!-- ===================================================================== -->
-    <mat-tab label="Commands">
-      <div class="sub-tab-content">
+    <div class="section-scroll-body">
 
-        <div class="filter-bar">
-          <span class="filter-title">Commands</span>
-          <span class="hint-text">{{ commands.length }} loaded</span>
-          <button mat-flat-button class="apply-btn" (click)="loadCommands()"
-                  [disabled]="isLoadingCommands" matTooltip="Reload">
-            <mat-icon>refresh</mat-icon>
-          </button>
-        </div>
-        <div class="new-row">
-          <button mat-flat-button class="new-btn" (click)="newCommand()" matTooltip="Add new command">
-            <mat-icon>add</mat-icon>
-          </button>
-        </div>
+      <div *ngIf="isLoadingCommands" class="loading-row">
+        <mat-spinner diameter="24"></mat-spinner><span>Loading...</span>
+      </div>
 
-        <div class="results-layout" *ngIf="commands.length > 0 || selectedCommand">
-          <div class="results-sidebar">
-            <div class="row-list">
-              <div *ngIf="isLoadingCommands" class="loading-row">
-                <mat-spinner diameter="24"></mat-spinner><span>Loading...</span>
-              </div>
-              <div *ngFor="let c of commands"
-                   class="row-item"
-                   [class.selected]="selectedCommand === c"
-                   (click)="selectCommand(c)">
-                <div class="row-info">
-                  <span class="row-name">{{ c.name || '(unnamed)' }}</span>
-                  <span class="row-meta">
-                    {{ truncate(c.description, 50) }}
-                    <span *ngIf="!c.isEnabled" class="disabled-tag">disabled</span>
-                    <span *ngIf="!c.commandId" class="disabled-tag new-tag">new</span>
-                  </span>
-                </div>
-                <span class="row-id" *ngIf="c.commandId">#{{ c.commandId }}</span>
-              </div>
-            </div>
+      <div class="accordion" *ngIf="commands.length > 0">
+        <div *ngFor="let c of commands"
+             class="accordion-row"
+             [class.expanded]="selectedCommand === c">
+
+          <div class="accordion-row-header" (click)="toggleCommand(c)">
+            <mat-icon class="chevron">{{ selectedCommand === c ? 'expand_less' : 'expand_more' }}</mat-icon>
+            <span class="accordion-row-name">{{ c.name || '(unnamed)' }}</span>
+            <span class="accordion-row-meta">{{ truncate(c.description, 60) }}</span>
+            <span *ngIf="!c.isEnabled" class="disabled-tag">disabled</span>
+            <span *ngIf="!c.commandId" class="disabled-tag new-tag">new</span>
+            <span class="accordion-row-spacer"></span>
+            <span class="accordion-row-id" *ngIf="c.commandId">#{{ c.commandId }}</span>
           </div>
 
-          <div class="details-panel" *ngIf="selectedCommand">
+          <div class="accordion-row-body" *ngIf="selectedCommand === c">
 
             <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
               <mat-label>Name</mat-label>
-              <input matInput [(ngModel)]="selectedCommand.name" name="c-name">
+              <input matInput [(ngModel)]="c.name" name="c-name-{{c.commandId || 'new'}}">
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
               <mat-label>Description</mat-label>
-              <textarea matInput rows="2" [(ngModel)]="selectedCommand.description" name="c-desc"></textarea>
+              <textarea matInput rows="2" [(ngModel)]="c.description" name="c-desc-{{c.commandId || 'new'}}"></textarea>
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
               <mat-label>Verb Tokens (JSON array of synonyms)</mat-label>
-              <textarea matInput rows="3" [(ngModel)]="selectedCommand.verbTokens" name="c-verbs"
+              <textarea matInput rows="3" [(ngModel)]="c.verbTokens" name="c-verbs-{{c.commandId || 'new'}}"
                         placeholder='["bloom","open","get me"]'></textarea>
             </mat-form-field>
             <span class="hint-text">
@@ -232,8 +63,8 @@
             </span>
 
             <div class="checkbox-row">
-              <mat-checkbox [(ngModel)]="selectedCommand.isEnabled" name="c-enabled">Enabled</mat-checkbox>
-              <span class="row-id-display" *ngIf="selectedCommand.commandId">ID: {{ selectedCommand.commandId }}</span>
+              <mat-checkbox [(ngModel)]="c.isEnabled" name="c-enabled-{{c.commandId || 'new'}}">Enabled</mat-checkbox>
+              <span class="row-id-display" *ngIf="c.commandId">ID: {{ c.commandId }}</span>
             </div>
 
             <div class="action-row">
@@ -245,18 +76,191 @@
               <button mat-stroked-button color="warn" (click)="deleteCommand()">Delete</button>
             </div>
           </div>
-
-          <div class="details-panel placeholder" *ngIf="!selectedCommand">
-            <p>Select a command or create a new one</p>
-          </div>
-        </div>
-
-        <div *ngIf="commands.length === 0 && !isLoadingCommands && !selectedCommand" class="empty-state">
-          <mat-icon>terminal</mat-icon>
-          <p>No commands in the global catalog. Click + to create one.</p>
         </div>
       </div>
-    </mat-tab>
 
-  </mat-tab-group>
+      <div *ngIf="commands.length === 0 && !isLoadingCommands" class="empty-state">
+        <mat-icon>terminal</mat-icon>
+        <p>No commands in the global catalog. Click + to create one.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       DRAGGABLE SPLITTER
+       ===================================================================== -->
+  <div class="splitter"
+       (mousedown)="onSplitterMouseDown($event)"
+       role="separator"
+       aria-orientation="horizontal"
+       aria-label="Resize Commands and Widgets sections"
+       title="Drag to resize">
+    <div class="splitter-grip"></div>
+  </div>
+
+  <!-- =====================================================================
+       WIDGETS SECTION (BOTTOM) — vertical widget accordion
+       ===================================================================== -->
+  <section class="widgets-section">
+
+    <header class="section-pinned-header">
+      <div class="header-title-row">
+        <span class="section-title">Widgets</span>
+        <span class="hint-text">{{ widgets.length }} loaded</span>
+        <span class="header-spacer"></span>
+        <button mat-flat-button class="apply-btn" (click)="loadWidgets()"
+                [disabled]="isLoadingWidgets" matTooltip="Reload">
+          <mat-icon>refresh</mat-icon>
+        </button>
+        <button mat-flat-button class="new-btn" (click)="newWidget()" matTooltip="Add new widget">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+    </header>
+
+    <div class="section-scroll-body">
+
+      <div *ngIf="isLoadingWidgets" class="loading-row">
+        <mat-spinner diameter="24"></mat-spinner><span>Loading...</span>
+      </div>
+
+      <div class="accordion" *ngIf="widgets.length > 0">
+        <div *ngFor="let w of widgets"
+             class="accordion-row"
+             [class.expanded]="selectedWidget === w">
+
+          <div class="accordion-row-header" (click)="toggleWidget(w)">
+            <mat-icon class="chevron">{{ selectedWidget === w ? 'expand_less' : 'expand_more' }}</mat-icon>
+            <span class="accordion-row-name">{{ w.name || '(unnamed)' }}</span>
+            <span class="accordion-row-meta">
+              {{ w.renderIntent }} · {{ w.commands.length }} mapping(s)
+            </span>
+            <span *ngIf="!w.isEnabled" class="disabled-tag">disabled</span>
+            <span *ngIf="!w.widgetId" class="disabled-tag new-tag">new</span>
+            <span class="accordion-row-spacer"></span>
+            <span class="accordion-row-id" *ngIf="w.widgetId">#{{ w.widgetId }}</span>
+          </div>
+
+          <div class="accordion-row-body" *ngIf="selectedWidget === w">
+
+            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+              <mat-label>Name</mat-label>
+              <input matInput [(ngModel)]="w.name" name="w-name-{{w.widgetId || 'new'}}">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+              <mat-label>Description (routing scent)</mat-label>
+              <textarea matInput rows="2" [(ngModel)]="w.description" name="w-desc-{{w.widgetId || 'new'}}"></textarea>
+            </mat-form-field>
+
+            <div class="form-row two-col">
+              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
+                <mat-label>Render Intent</mat-label>
+                <mat-select [(ngModel)]="w.renderIntent" name="w-render-{{w.widgetId || 'new'}}">
+                  <mat-option *ngFor="let v of renderIntents" [value]="v">{{ v }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <div class="checkbox-col">
+                <mat-checkbox [(ngModel)]="w.isEnabled" name="w-enabled-{{w.widgetId || 'new'}}">Enabled</mat-checkbox>
+                <span class="row-id-display" *ngIf="w.widgetId">ID: {{ w.widgetId }}</span>
+              </div>
+            </div>
+
+            <!-- Mapped Commands -->
+            <div class="section-header">
+              <mat-icon>link</mat-icon>
+              <span>Mapped Commands</span>
+              <span class="hint-text" *ngIf="commands.length === 0">
+                No commands in the global catalog yet — add some in the Commands section above.
+              </span>
+            </div>
+
+            <div class="mapping-list">
+              <ng-container *ngFor="let cmd of commands">
+                <ng-container *ngTemplateOutlet="mappingRow; context: { cmd: cmd, mapping: mappingFor(cmd.commandId) }"></ng-container>
+              </ng-container>
+            </div>
+
+            <ng-template #mappingRow let-cmd="cmd" let-mapping="mapping">
+              <div class="mapping-row" [class.unmapped]="!mapping">
+                <div class="mapping-head">
+                  <mat-checkbox
+                    [checked]="!!mapping"
+                    (change)="toggleMapping(cmd.commandId, $event.checked)">
+                    <span class="mapping-name">{{ cmd.name }}</span>
+                    <span class="global-tag" *ngIf="!mapping">global</span>
+                    <span class="mapping-desc" *ngIf="cmd.description">— {{ truncate(cmd.description, 80) }}</span>
+                  </mat-checkbox>
+                </div>
+
+                <div class="mapping-fields" *ngIf="mapping">
+                  <div class="form-row two-col">
+                    <mat-form-field appearance="outline" class="half-field" floatLabel="always">
+                      <mat-label>Http Method</mat-label>
+                      <mat-select [(ngModel)]="mapping.httpMethod" name="m-method-{{w.widgetId || 'new'}}-{{cmd.commandId}}"
+                                  (selectionChange)="onMappingMethodChange(mapping)">
+                        <mat-option [value]="null">(none — surfacing)</mat-option>
+                        <mat-option *ngFor="let v of httpMethods" [value]="v">{{ v }}</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <div class="checkbox-col">
+                      <mat-checkbox [(ngModel)]="mapping.requiresConfirmation" name="m-conf-{{w.widgetId || 'new'}}-{{cmd.commandId}}">
+                        Requires Confirmation
+                      </mat-checkbox>
+                      <mat-checkbox [(ngModel)]="mapping.isEnabled" name="m-en-{{w.widgetId || 'new'}}-{{cmd.commandId}}">Enabled</mat-checkbox>
+                    </div>
+                  </div>
+
+                  <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+                    <mat-label>Api Endpoint</mat-label>
+                    <input matInput
+                           [(ngModel)]="mapping.apiEndpoint"
+                           name="m-ep-{{w.widgetId || 'new'}}-{{cmd.commandId}}"
+                           [disabled]="isSurfacing(mapping)"
+                           placeholder="/api/user/settings">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+                    <mat-label>Body Template (JSON)</mat-label>
+                    <textarea matInput rows="2"
+                              [(ngModel)]="mapping.bodyTemplate"
+                              name="m-body-{{w.widgetId || 'new'}}-{{cmd.commandId}}"
+                              [disabled]="isSurfacing(mapping)"
+                              placeholder='{"goalWeight":"{value}"}'></textarea>
+                  </mat-form-field>
+                </div>
+              </div>
+            </ng-template>
+
+            <div class="action-row">
+              <button mat-flat-button class="save-btn" (click)="saveAllWidgets()"
+                      [disabled]="isSavingWidgets || !hasAnyWidgetChanges()"
+                      matTooltip="Saves the ENTIRE widget collection (whole-collection replace).">
+                <mat-icon>check</mat-icon>
+                {{ isSavingWidgets ? 'Saving...' : 'Save' }}
+              </button>
+              <button mat-stroked-button class="undo-btn" (click)="undoSelectedWidget()"
+                      [disabled]="!hasSelectedWidgetChanges()"
+                      matTooltip="Revert this widget's edits">
+                <mat-icon>close</mat-icon>
+              </button>
+              <button mat-stroked-button color="warn" (click)="deleteWidget()">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slurp drop zone stub (disabled) — bottom of section, full width -->
+      <div class="slurp-dropzone" aria-disabled="true">
+        <mat-icon>cloud_upload</mat-icon>
+        <span>Drop Flutter widget file to auto-map (coming soon)</span>
+      </div>
+
+      <div *ngIf="widgets.length === 0 && !isLoadingWidgets" class="empty-state">
+        <mat-icon>widgets</mat-icon>
+        <p>No widgets yet. Click + to create one.</p>
+      </div>
+    </div>
+  </section>
+
 </div>

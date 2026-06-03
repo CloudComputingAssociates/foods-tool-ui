@@ -1,169 +1,218 @@
+// =============================================================================
+// LAYOUT — single vertical page: Commands (top) | splitter | Widgets (bottom)
+// =============================================================================
 .command-widget-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 8px;
-  gap: 8px;
+  min-height: 480px;
+  overflow: hidden;
+  user-select: text;
+
+  &.dragging {
+    user-select: none;
+    cursor: ns-resize;
+  }
 }
 
-.inner-tabs {
-  flex: 1;
-  min-height: 0;
-}
-
-.sub-tab-content {
+.commands-section,
+.widgets-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px 4px 4px 4px;
-}
-
-// Filter bar (mirrors recipes-admin)
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-
-  .filter-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #1976d2;
-    margin-right: 4px;
-  }
-
-  .apply-btn {
-    background-color: white !important;
-    color: #888 !important;
-    border: 1px solid #ccc;
-    min-width: 36px;
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    border-radius: 4px;
-
-    &:hover { background-color: #f5f5f5 !important; }
-    .mat-icon { margin: 0; }
-  }
-}
-
-.new-row {
-  margin-bottom: 4px;
-
-  .new-btn {
-    background-color: #4caf50 !important;
-    color: white !important;
-    min-width: 36px;
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-
-    &:hover { background-color: #43a047 !important; }
-    .mat-icon { margin: 0; }
-  }
-}
-
-// Results layout
-.results-layout {
-  display: flex;
-  gap: 16px;
-  flex: 1;
-  min-height: 0;
-}
-
-.results-sidebar {
-  width: 320px;
-  flex-shrink: 0;
+  min-height: 120px;
+  overflow: hidden;        // child .section-scroll-body handles scrolling
+  background: #fff;
   border: 1px solid #ddd;
   border-radius: 4px;
-  overflow: hidden;
 }
 
-.row-list {
-  overflow-y: auto;
-  max-height: 600px;
+.commands-section {
+  // height is bound from TS via [style.height.px]; flex-shrink stays 1 so
+  // mins still enforce when viewport is small.
+  flex-shrink: 0;
 }
 
-.loading-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 16px;
-  color: #888;
+.widgets-section {
+  flex: 1;                 // take whatever the splitter leaves
+  margin-top: 0;
 }
 
-.row-item {
+// Pinned section header — always fully visible; never overlaid.
+.section-pinned-header {
+  flex-shrink: 0;
   padding: 8px 12px;
-  cursor: pointer;
   border-bottom: 1px solid #eee;
-  transition: background 0.15s;
+  background: #fff;
+  z-index: 1;
+}
+
+.header-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
 
-  &:hover { background: #f0f7ff; }
-  &.selected { background: #e3f2fd; border-left: 3px solid #1976d2; }
+  .section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1976d2;
+  }
+
+  .header-spacer { flex: 1; }
 }
 
-.row-info {
+// Scrollable body inside each section.
+.section-scroll-body {
   flex: 1;
-  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
 }
 
-.row-name {
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.row-meta {
-  font-size: 11px;
-  color: #888;
-}
-
-.row-id {
-  font-size: 11px;
-  color: #aaa;
+// =============================================================================
+// SPLITTER (draggable horizontal divider)
+// =============================================================================
+.splitter {
   flex-shrink: 0;
+  height: 8px;
+  background: #e0e0e0;
+  cursor: ns-resize;
+  position: relative;
+  margin: 4px 0;
+  border-radius: 2px;
+  transition: background 0.12s;
+
+  &:hover { background: #c8d4e0; }
+  &:active { background: #1976d2; }
 }
 
-.disabled-tag {
-  display: inline-block;
-  background: #eee;
-  color: #888;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 8px;
-  margin-left: 4px;
-  text-transform: uppercase;
-
-  &.new-tag { background: #fff3e0; color: #e65100; }
+.splitter-grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 2px;
+  background: #888;
+  border-radius: 1px;
+  pointer-events: none;
 }
 
-// Details panel
-.details-panel {
-  flex: 1;
+.command-widget-container.dragging .splitter { background: #1976d2; }
+
+// =============================================================================
+// SECTION HEADER BUTTONS (small, mirrors filter-bar idiom)
+// =============================================================================
+.apply-btn {
+  background-color: white !important;
+  color: #888 !important;
+  border: 1px solid #ccc;
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 4px;
+  line-height: 32px;
+
+  &:hover { background-color: #f5f5f5 !important; }
+  .mat-icon { margin: 0; font-size: 18px; width: 18px; height: 18px; }
+}
+
+.new-btn {
+  background-color: #4caf50 !important;
+  color: white !important;
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  line-height: 32px;
+
+  &:hover { background-color: #43a047 !important; }
+  .mat-icon { margin: 0; font-size: 18px; width: 18px; height: 18px; }
+}
+
+// =============================================================================
+// ACCORDION (used by both Commands and Widgets sections)
+// =============================================================================
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.accordion-row {
+  width: 100%;
   border: 1px solid #ddd;
   border-radius: 4px;
-  padding: 16px;
-  overflow-y: auto;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
 
-  &.placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #888;
+  &:hover { border-color: #bbb; }
+  &.expanded {
+    border-color: #1976d2;
+    box-shadow: 0 1px 3px rgba(25,118,210,0.15);
   }
 }
 
+.accordion-row-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+
+  .chevron {
+    color: #888;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .accordion-row-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #222;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .accordion-row-meta {
+    font-size: 12px;
+    color: #888;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 340px;
+  }
+
+  .accordion-row-spacer { flex: 1; }
+
+  .accordion-row-id {
+    font-size: 11px;
+    color: #aaa;
+    font-family: monospace;
+  }
+}
+
+.accordion-row-body {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 16px;
+  border-top: 1px solid #eee;
+  background: #fafcff;
+}
+
+// =============================================================================
+// SHARED FIELD HELPERS
+// =============================================================================
 .full-width-field {
   width: 100%;
   margin-bottom: 4px;
@@ -206,75 +255,31 @@
   font-style: italic;
 }
 
-// Widgets vertical accordion (no two-pane on Widgets tab)
-.widget-accordion {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
+.disabled-tag {
+  display: inline-block;
+  background: #eee;
+  color: #888;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+  text-transform: uppercase;
+
+  &.new-tag { background: #fff3e0; color: #e65100; }
 }
 
-.widget-row {
-  width: 100%;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fff;
-  transition: border-color 0.15s, box-shadow 0.15s;
-
-  &:hover { border-color: #bbb; }
-  &.expanded {
-    border-color: #1976d2;
-    box-shadow: 0 1px 3px rgba(25,118,210,0.15);
-  }
-}
-
-.widget-row-header {
+.loading-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  cursor: pointer;
-  user-select: none;
-
-  .chevron {
-    color: #888;
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
-  }
-
-  .widget-row-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: #222;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .widget-row-meta {
-    font-size: 12px;
-    color: #888;
-  }
-
-  .widget-row-spacer { flex: 1; }
-
-  .widget-row-id {
-    font-size: 11px;
-    color: #aaa;
-    font-family: monospace;
-  }
+  padding: 16px;
+  color: #888;
 }
 
-.widget-row-body {
-  display: flex;
-  flex-direction: column;
-  padding: 12px 16px 16px;
-  border-top: 1px solid #eee;
-  background: #fafcff;
-}
-
-// Mapped Commands section
+// =============================================================================
+// MAPPED COMMANDS (inside an expanded widget row)
+// =============================================================================
 .section-header {
   display: flex;
   align-items: center;
@@ -307,7 +312,6 @@
   &.unmapped {
     background: #fafafa;
     opacity: 0.75;
-
     .mapping-name { color: #777; font-weight: 400; }
   }
 }
@@ -347,7 +351,9 @@
   border-top: 1px dashed #e0e0e0;
 }
 
-// Slurp drop-zone stub (disabled)
+// =============================================================================
+// SLURP DROP-ZONE STUB (disabled)
+// =============================================================================
 .slurp-dropzone {
   margin-top: 16px;
   display: flex;
@@ -366,7 +372,9 @@
   mat-icon { color: #ccc; }
 }
 
-// Action row
+// =============================================================================
+// ACTION ROW (save/undo/delete)
+// =============================================================================
 .action-row {
   display: flex;
   gap: 12px;
@@ -390,19 +398,21 @@
   }
 }
 
-// Empty state
+// =============================================================================
+// EMPTY STATE
+// =============================================================================
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px;
+  padding: 36px;
   color: #999;
 
   mat-icon {
-    font-size: 48px;
-    width: 48px;
-    height: 48px;
-    margin-bottom: 12px;
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 8px;
   }
 }
