@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Food, FoodMetadataUpdate, FatSecretCompareResponse, FatSecretOverwriteRequest } from '../models/food.model';
-import { Widget, Command } from '../models/command-action.model';
+import { Widget, Command } from '../models/command-widget.model';
 
 interface NutritionUploadResponse {
   success: boolean;

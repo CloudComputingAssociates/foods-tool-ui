@@ -35,7 +35,7 @@ import { ImageUploadComponent } from './image-upload/image-upload.component';
 import { FatsecretCompareComponent } from './fatsecret-compare/fatsecret-compare.component';
 import { MealsAdminComponent } from './meals-admin/meals-admin.component';
 import { RecipesAdminComponent } from './recipes-admin/recipes-admin.component';
-import { CommandActionComponent } from './command-action/command-action.component';
+import { CommandWidgetComponent } from './command-widget/command-widget.component';
 import { SafePipe } from './pipes/safe.pipe';
 
 @NgModule({
@@ -48,7 +48,7 @@ import { SafePipe } from './pipes/safe.pipe';
     FatsecretCompareComponent,
     MealsAdminComponent,
     RecipesAdminComponent,
-    CommandActionComponent,
+    CommandWidgetComponent,
     SafePipe
   ],
   imports: [

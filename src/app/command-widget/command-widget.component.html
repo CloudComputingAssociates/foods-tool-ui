@@ -1,4 +1,4 @@
-<div class="cmd-action-container">
+<div class="command-widget-container">
 
   <mat-tab-group class="inner-tabs" animationDuration="0ms">
 
@@ -22,152 +22,145 @@
           </button>
         </div>
 
-        <div class="results-layout" *ngIf="widgets.length > 0 || selectedWidget">
+        <div *ngIf="isLoadingWidgets" class="loading-row">
+          <mat-spinner diameter="24"></mat-spinner><span>Loading...</span>
+        </div>
 
-          <!-- Left: widget list -->
-          <div class="results-sidebar">
-            <div class="row-list">
-              <div *ngIf="isLoadingWidgets" class="loading-row">
-                <mat-spinner diameter="24"></mat-spinner><span>Loading...</span>
-              </div>
-              <div *ngFor="let w of widgets"
-                   class="row-item"
-                   [class.selected]="selectedWidget === w"
-                   (click)="selectWidget(w)">
-                <div class="row-info">
-                  <span class="row-name">{{ w.name || '(unnamed)' }}</span>
-                  <span class="row-meta">
-                    {{ w.renderIntent }} · {{ w.commands.length }} mapping(s)
-                    <span *ngIf="!w.isEnabled" class="disabled-tag">disabled</span>
-                    <span *ngIf="!w.widgetId" class="disabled-tag new-tag">new</span>
-                  </span>
-                </div>
-                <span class="row-id" *ngIf="w.widgetId">#{{ w.widgetId }}</span>
-              </div>
-            </div>
-          </div>
+        <!-- Vertical accordion: full-width rows, click to expand inline -->
+        <div class="widget-accordion" *ngIf="widgets.length > 0">
+          <div *ngFor="let w of widgets"
+               class="widget-row"
+               [class.expanded]="selectedWidget === w">
 
-          <!-- Right: widget detail -->
-          <div class="details-panel" *ngIf="selectedWidget">
-
-            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>Name</mat-label>
-              <input matInput [(ngModel)]="selectedWidget.name" name="w-name">
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>Description (routing scent)</mat-label>
-              <textarea matInput rows="2" [(ngModel)]="selectedWidget.description" name="w-desc"></textarea>
-            </mat-form-field>
-
-            <div class="form-row two-col">
-              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Render Intent</mat-label>
-                <mat-select [(ngModel)]="selectedWidget.renderIntent" name="w-render">
-                  <mat-option *ngFor="let v of renderIntents" [value]="v">{{ v }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <div class="checkbox-col">
-                <mat-checkbox [(ngModel)]="selectedWidget.isEnabled" name="w-enabled">Enabled</mat-checkbox>
-                <span class="row-id-display" *ngIf="selectedWidget.widgetId">ID: {{ selectedWidget.widgetId }}</span>
-              </div>
-            </div>
-
-            <!-- Mapped Commands -->
-            <div class="section-header">
-              <mat-icon>link</mat-icon>
-              <span>Mapped Commands</span>
-              <span class="hint-text" *ngIf="commands.length === 0">
-                No commands in the global catalog yet — add some in the Commands tab.
+            <div class="widget-row-header" (click)="toggleWidget(w)">
+              <mat-icon class="chevron">{{ selectedWidget === w ? 'expand_less' : 'expand_more' }}</mat-icon>
+              <span class="widget-row-name">{{ w.name || '(unnamed)' }}</span>
+              <span class="widget-row-meta">
+                {{ w.renderIntent }} · {{ w.commands.length }} mapping(s)
               </span>
+              <span *ngIf="!w.isEnabled" class="disabled-tag">disabled</span>
+              <span *ngIf="!w.widgetId" class="disabled-tag new-tag">new</span>
+              <span class="widget-row-spacer"></span>
+              <span class="widget-row-id" *ngIf="w.widgetId">#{{ w.widgetId }}</span>
             </div>
 
-            <div class="mapping-list">
-              <ng-container *ngFor="let cmd of commands">
-                <ng-container *ngTemplateOutlet="mappingRow; context: { cmd: cmd, mapping: mappingFor(cmd.commandId) }"></ng-container>
-              </ng-container>
-            </div>
+            <div class="widget-row-body" *ngIf="selectedWidget === w">
 
-            <ng-template #mappingRow let-cmd="cmd" let-mapping="mapping">
-              <div class="mapping-row" [class.unmapped]="!mapping">
-                <div class="mapping-head">
-                  <mat-checkbox
-                    [checked]="!!mapping"
-                    (change)="toggleMapping(cmd.commandId, $event.checked)">
-                    <span class="mapping-name">{{ cmd.name }}</span>
-                    <span class="global-tag" *ngIf="!mapping">global</span>
-                    <span class="mapping-desc" *ngIf="cmd.description">— {{ truncate(cmd.description, 80) }}</span>
-                  </mat-checkbox>
+              <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+                <mat-label>Name</mat-label>
+                <input matInput [(ngModel)]="w.name" name="w-name-{{w.widgetId || 'new'}}">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+                <mat-label>Description (routing scent)</mat-label>
+                <textarea matInput rows="2" [(ngModel)]="w.description" name="w-desc-{{w.widgetId || 'new'}}"></textarea>
+              </mat-form-field>
+
+              <div class="form-row two-col">
+                <mat-form-field appearance="outline" class="half-field" floatLabel="always">
+                  <mat-label>Render Intent</mat-label>
+                  <mat-select [(ngModel)]="w.renderIntent" name="w-render-{{w.widgetId || 'new'}}">
+                    <mat-option *ngFor="let v of renderIntents" [value]="v">{{ v }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <div class="checkbox-col">
+                  <mat-checkbox [(ngModel)]="w.isEnabled" name="w-enabled-{{w.widgetId || 'new'}}">Enabled</mat-checkbox>
+                  <span class="row-id-display" *ngIf="w.widgetId">ID: {{ w.widgetId }}</span>
                 </div>
+              </div>
 
-                <div class="mapping-fields" *ngIf="mapping">
-                  <div class="form-row two-col">
-                    <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                      <mat-label>Http Method</mat-label>
-                      <mat-select [(ngModel)]="mapping.httpMethod" name="m-method-{{cmd.commandId}}"
-                                  (selectionChange)="onMappingMethodChange(mapping)">
-                        <mat-option [value]="null">(none — surfacing)</mat-option>
-                        <mat-option *ngFor="let v of httpMethods" [value]="v">{{ v }}</mat-option>
-                      </mat-select>
-                    </mat-form-field>
-                    <div class="checkbox-col">
-                      <mat-checkbox [(ngModel)]="mapping.requiresConfirmation" name="m-conf-{{cmd.commandId}}">
-                        Requires Confirmation
-                      </mat-checkbox>
-                      <mat-checkbox [(ngModel)]="mapping.isEnabled" name="m-en-{{cmd.commandId}}">Enabled</mat-checkbox>
-                    </div>
+              <!-- Mapped Commands -->
+              <div class="section-header">
+                <mat-icon>link</mat-icon>
+                <span>Mapped Commands</span>
+                <span class="hint-text" *ngIf="commands.length === 0">
+                  No commands in the global catalog yet — add some in the Commands tab.
+                </span>
+              </div>
+
+              <div class="mapping-list">
+                <ng-container *ngFor="let cmd of commands">
+                  <ng-container *ngTemplateOutlet="mappingRow; context: { cmd: cmd, mapping: mappingFor(cmd.commandId) }"></ng-container>
+                </ng-container>
+              </div>
+
+              <ng-template #mappingRow let-cmd="cmd" let-mapping="mapping">
+                <div class="mapping-row" [class.unmapped]="!mapping">
+                  <div class="mapping-head">
+                    <mat-checkbox
+                      [checked]="!!mapping"
+                      (change)="toggleMapping(cmd.commandId, $event.checked)">
+                      <span class="mapping-name">{{ cmd.name }}</span>
+                      <span class="global-tag" *ngIf="!mapping">global</span>
+                      <span class="mapping-desc" *ngIf="cmd.description">— {{ truncate(cmd.description, 80) }}</span>
+                    </mat-checkbox>
                   </div>
 
-                  <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-                    <mat-label>Api Endpoint</mat-label>
-                    <input matInput
-                           [(ngModel)]="mapping.apiEndpoint"
-                           name="m-ep-{{cmd.commandId}}"
-                           [disabled]="isSurfacing(mapping)"
-                           placeholder="/api/user/settings">
-                  </mat-form-field>
+                  <div class="mapping-fields" *ngIf="mapping">
+                    <div class="form-row two-col">
+                      <mat-form-field appearance="outline" class="half-field" floatLabel="always">
+                        <mat-label>Http Method</mat-label>
+                        <mat-select [(ngModel)]="mapping.httpMethod" name="m-method-{{w.widgetId || 'new'}}-{{cmd.commandId}}"
+                                    (selectionChange)="onMappingMethodChange(mapping)">
+                          <mat-option [value]="null">(none — surfacing)</mat-option>
+                          <mat-option *ngFor="let v of httpMethods" [value]="v">{{ v }}</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <div class="checkbox-col">
+                        <mat-checkbox [(ngModel)]="mapping.requiresConfirmation" name="m-conf-{{w.widgetId || 'new'}}-{{cmd.commandId}}">
+                          Requires Confirmation
+                        </mat-checkbox>
+                        <mat-checkbox [(ngModel)]="mapping.isEnabled" name="m-en-{{w.widgetId || 'new'}}-{{cmd.commandId}}">Enabled</mat-checkbox>
+                      </div>
+                    </div>
 
-                  <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-                    <mat-label>Body Template (JSON)</mat-label>
-                    <textarea matInput rows="2"
-                              [(ngModel)]="mapping.bodyTemplate"
-                              name="m-body-{{cmd.commandId}}"
-                              [disabled]="isSurfacing(mapping)"
-                              placeholder='{"goalWeight":"{value}"}'></textarea>
-                  </mat-form-field>
+                    <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+                      <mat-label>Api Endpoint</mat-label>
+                      <input matInput
+                             [(ngModel)]="mapping.apiEndpoint"
+                             name="m-ep-{{w.widgetId || 'new'}}-{{cmd.commandId}}"
+                             [disabled]="isSurfacing(mapping)"
+                             placeholder="/api/user/settings">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+                      <mat-label>Body Template (JSON)</mat-label>
+                      <textarea matInput rows="2"
+                                [(ngModel)]="mapping.bodyTemplate"
+                                name="m-body-{{w.widgetId || 'new'}}-{{cmd.commandId}}"
+                                [disabled]="isSurfacing(mapping)"
+                                placeholder='{"goalWeight":"{value}"}'></textarea>
+                    </mat-form-field>
+                  </div>
                 </div>
+              </ng-template>
+
+              <!-- Actions -->
+              <div class="action-row">
+                <button mat-flat-button class="save-btn" (click)="saveAllWidgets()"
+                        [disabled]="isSavingWidgets || !hasAnyWidgetChanges()"
+                        matTooltip="Saves the ENTIRE widget collection (whole-collection replace).">
+                  <mat-icon>check</mat-icon>
+                  {{ isSavingWidgets ? 'Saving...' : 'Save' }}
+                </button>
+                <button mat-stroked-button class="undo-btn" (click)="undoSelectedWidget()"
+                        [disabled]="!hasSelectedWidgetChanges()"
+                        matTooltip="Revert this widget's edits">
+                  <mat-icon>close</mat-icon>
+                </button>
+                <button mat-stroked-button color="warn" (click)="deleteWidget()">Delete</button>
               </div>
-            </ng-template>
-
-            <!-- Slurp drop zone stub (disabled) -->
-            <div class="slurp-dropzone" aria-disabled="true">
-              <mat-icon>cloud_upload</mat-icon>
-              <span>Drop Flutter widget file to auto-map (coming soon)</span>
             </div>
-
-            <!-- Actions -->
-            <div class="action-row">
-              <button mat-flat-button class="save-btn" (click)="saveAllWidgets()"
-                      [disabled]="isSavingWidgets || !hasAnyWidgetChanges()"
-                      matTooltip="Saves the ENTIRE widget collection (whole-collection replace).">
-                <mat-icon>check</mat-icon>
-                {{ isSavingWidgets ? 'Saving...' : 'Save' }}
-              </button>
-              <button mat-stroked-button class="undo-btn" (click)="undoSelectedWidget()"
-                      [disabled]="!hasSelectedWidgetChanges()"
-                      matTooltip="Revert this widget's edits">
-                <mat-icon>close</mat-icon>
-              </button>
-              <button mat-stroked-button color="warn" (click)="deleteWidget()">Delete</button>
-            </div>
-          </div>
-
-          <div class="details-panel placeholder" *ngIf="!selectedWidget">
-            <p>Select a widget or create a new one</p>
           </div>
         </div>
 
-        <div *ngIf="widgets.length === 0 && !isLoadingWidgets && !selectedWidget" class="empty-state">
+        <!-- Slurp drop zone stub (disabled) — bottom of tab, full width -->
+        <div class="slurp-dropzone" aria-disabled="true">
+          <mat-icon>cloud_upload</mat-icon>
+          <span>Drop Flutter widget file to auto-map (coming soon)</span>
+        </div>
+
+        <div *ngIf="widgets.length === 0 && !isLoadingWidgets" class="empty-state">
           <mat-icon>widgets</mat-icon>
           <p>No widgets yet. Click + to create one.</p>
         </div>

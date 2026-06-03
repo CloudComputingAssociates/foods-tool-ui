@@ -5,14 +5,14 @@ import { RegiApiService } from '../services/regi-api.service';
 import {
   Widget, WidgetCommand, Command,
   RenderIntent, HttpMethod
-} from '../models/command-action.model';
+} from '../models/command-widget.model';
 
 @Component({
-  selector: 'app-command-action',
-  templateUrl: './command-action.component.html',
-  styleUrls: ['./command-action.component.scss']
+  selector: 'app-command-widget',
+  templateUrl: './command-widget.component.html',
+  styleUrls: ['./command-widget.component.scss']
 })
-export class CommandActionComponent implements OnInit {
+export class CommandWidgetComponent implements OnInit {
 
   renderIntents: RenderIntent[] = ['bloom', 'zoom', 'speak'];
   httpMethods: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
@@ -70,6 +70,10 @@ export class CommandActionComponent implements OnInit {
 
   selectWidget(w: Widget): void {
     this.selectedWidget = w;
+  }
+
+  toggleWidget(w: Widget): void {
+    this.selectedWidget = this.selectedWidget === w ? null : w;
   }
 
   newWidget(): void {
