@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Food, FoodMetadataUpdate, FatSecretCompareResponse, FatSecretOverwriteRequest } from '../models/food.model';
-import { CmdAction, CmdTarget, CmdPhrasing } from '../models/command-action.model';
+import { Widget, Command } from '../models/command-action.model';
 
 interface NutritionUploadResponse {
   success: boolean;
@@ -244,85 +244,31 @@ export class RegiApiService {
   }
 
   // ========================================
-  // COMMAND-ACTION: TARGETS
+  // COMMAND ADMIN: WIDGETS & COMMANDS
+  // Whole-collection replace semantics on both POSTs — the server reconciles
+  // by absence (anything not in the payload is deleted in the same tx). Callers
+  // MUST send the entire array on every save.
   // ========================================
 
-  listCmdTargets(): Observable<CmdTarget[]> {
-    return this.http.get<CmdTarget[]>(`${this.baseUrl}/command/targets`);
+  getWidgets(): Observable<Widget[]> {
+    return this.http.get<Widget[]>(`${this.baseUrl}/command/widgets`);
   }
 
-  getCmdTarget(id: number): Observable<CmdTarget> {
-    return this.http.get<CmdTarget>(`${this.baseUrl}/command/targets/${id}`);
+  saveAllWidgets(widgets: Widget[]): Observable<Widget[]> {
+    return this.http.post<Widget[]>(`${this.baseUrl}/command/widgets`, widgets);
   }
 
-  createCmdTarget(target: Partial<CmdTarget>): Observable<CmdTarget> {
-    return this.http.post<CmdTarget>(`${this.baseUrl}/command/targets`, target);
+  deleteWidget(widgetId: number): Observable<any> {
+    return this.http.delete<any>(`${this.baseUrl}/command/widgets/${widgetId}`);
   }
 
-  updateCmdTarget(id: number, target: CmdTarget): Observable<CmdTarget> {
-    return this.http.put<CmdTarget>(`${this.baseUrl}/command/targets/${id}`, target);
+  // NOTE: GET /api/command/commands may not yet be implemented server-side.
+  // The component treats a 404/empty as an empty catalog and does not crash.
+  getCommands(): Observable<Command[]> {
+    return this.http.get<Command[]>(`${this.baseUrl}/command/commands`);
   }
 
-  deleteCmdTarget(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.baseUrl}/command/targets/${id}`);
-  }
-
-  // ========================================
-  // COMMAND-ACTION: ACTIONS
-  // ========================================
-
-  listCmdActions(): Observable<CmdAction[]> {
-    return this.http.get<CmdAction[]>(`${this.baseUrl}/command/actions`);
-  }
-
-  getCmdAction(id: number): Observable<CmdAction> {
-    return this.http.get<CmdAction>(`${this.baseUrl}/command/actions/${id}`);
-  }
-
-  createCmdAction(action: Partial<CmdAction>): Observable<CmdAction> {
-    return this.http.post<CmdAction>(`${this.baseUrl}/command/actions`, action);
-  }
-
-  updateCmdAction(id: number, action: CmdAction): Observable<CmdAction> {
-    return this.http.put<CmdAction>(`${this.baseUrl}/command/actions/${id}`, action);
-  }
-
-  deleteCmdAction(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.baseUrl}/command/actions/${id}`);
-  }
-
-  // ========================================
-  // COMMAND-ACTION: PHRASINGS
-  // ========================================
-
-  listCmdPhrasings(filters?: { targetId?: number; version?: string }): Observable<CmdPhrasing[]> {
-    let params = new HttpParams();
-    if (filters?.targetId !== undefined && filters.targetId !== null) {
-      params = params.set('targetId', filters.targetId.toString());
-    }
-    if (filters?.version) {
-      params = params.set('version', filters.version);
-    }
-    return this.http.get<CmdPhrasing[]>(`${this.baseUrl}/command/phrasings`, { params });
-  }
-
-  getCmdPhrasing(id: number): Observable<CmdPhrasing> {
-    return this.http.get<CmdPhrasing>(`${this.baseUrl}/command/phrasings/${id}`);
-  }
-
-  createCmdPhrasing(phrasing: Partial<CmdPhrasing>): Observable<CmdPhrasing> {
-    return this.http.post<CmdPhrasing>(`${this.baseUrl}/command/phrasings`, phrasing);
-  }
-
-  bulkCreateCmdPhrasings(phrasings: Partial<CmdPhrasing>[]): Observable<CmdPhrasing[]> {
-    return this.http.post<CmdPhrasing[]>(`${this.baseUrl}/command/phrasings/bulk`, phrasings);
-  }
-
-  updateCmdPhrasing(id: number, phrasing: CmdPhrasing): Observable<CmdPhrasing> {
-    return this.http.put<CmdPhrasing>(`${this.baseUrl}/command/phrasings/${id}`, phrasing);
-  }
-
-  deleteCmdPhrasing(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.baseUrl}/command/phrasings/${id}`);
+  saveAllCommands(cmds: Command[]): Observable<Command[]> {
+    return this.http.post<Command[]>(`${this.baseUrl}/command/commands`, cmds);
   }
 }

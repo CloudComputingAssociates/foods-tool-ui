@@ -1,48 +1,28 @@
-export type RenderChannel = 'speak' | 'print' | 'bloom';
-export type BloomContent = 'editable' | 'readonly' | 'pdf' | 'report' | 'balloon';
-export type HighlightStyle = 'label-glow' | 'border' | 'none';
-export type ValueType = 'number' | 'string' | 'bool' | 'enum';
-export type RecoveryClass = 'act' | 'confirm';
-export type PhrasingSource = 'seed' | 'mined';
+export type RenderIntent = 'bloom' | 'zoom' | 'speak';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-export interface CmdTarget {
-  targetId: number;
-  widget: string;
-  label: string;
-  renderChannel: RenderChannel;
-  bloomContent?: BloomContent | null;
-  highlightStyle: HighlightStyle;
-  apiEndpoint?: string | null;
-  apiField?: string | null;
-  valueType?: ValueType | null;
-  chatSettable: boolean;
-  renderHints?: string | null;
+export interface WidgetCommand {
+  commandId: number;
+  requiresConfirmation: boolean;
+  httpMethod: HttpMethod | null;
+  apiEndpoint: string | null;
+  bodyTemplate: string | null;
   isEnabled: boolean;
-  cmdActionVersion: string;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
-export interface CmdAction {
-  actionId: number;
-  verb: string;
-  recoveryClass: RecoveryClass;
-  storesTouched?: string | null;
+export interface Widget {
+  widgetId: number;
+  name: string;
+  description: string;
+  renderIntent: RenderIntent;
   isEnabled: boolean;
-  cmdActionVersion: string;
-  createdAt?: string;
-  updatedAt?: string;
+  commands: WidgetCommand[];
 }
 
-export interface CmdPhrasing {
-  phrasingId: number;
-  targetId: number;
-  actionId?: number | null;
-  phrase: string;
-  source: PhrasingSource;
-  hits: number;
+export interface Command {
+  commandId: number;
+  name: string;
+  description: string;
+  verbTokens: string;
   isEnabled: boolean;
-  cmdActionVersion: string;
-  createdAt?: string;
-  updatedAt?: string;
 }

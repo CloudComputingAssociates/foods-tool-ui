@@ -32,16 +32,6 @@
     margin-right: 4px;
   }
 
-  .search-field {
-    flex: 1;
-    min-width: 200px;
-    max-width: 300px;
-  }
-
-  .picker-field {
-    min-width: 220px;
-  }
-
   .apply-btn {
     background-color: white !important;
     color: #888 !important;
@@ -75,44 +65,6 @@
   }
 }
 
-// Bulk add panel (phrasings tab only)
-.bulk-panel {
-  border: 1px solid #ddd;
-  border-left: 4px solid #1976d2;
-  border-radius: 4px;
-  padding: 12px;
-  background: #fafcff;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  .bulk-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 600;
-    color: #1976d2;
-    font-size: 14px;
-
-    .bulk-count {
-      margin-left: auto;
-      font-size: 12px;
-      font-weight: 500;
-      color: #666;
-    }
-  }
-
-  .bulk-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-
-    .picker-field { min-width: 220px; flex: 1; }
-    .small-field { min-width: 120px; max-width: 160px; }
-  }
-}
-
 // Results layout
 .results-layout {
   display: flex;
@@ -122,7 +74,7 @@
 }
 
 .results-sidebar {
-  width: 360px;
+  width: 320px;
   flex-shrink: 0;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -192,6 +144,8 @@
   border-radius: 8px;
   margin-left: 4px;
   text-transform: uppercase;
+
+  &.new-tag { background: #fff3e0; color: #e65100; }
 }
 
 // Details panel
@@ -229,7 +183,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin: 8px 0 12px;
   flex-wrap: wrap;
 }
 
@@ -252,15 +206,119 @@
   font-style: italic;
 }
 
-// Action buttons
+// Mapped Commands section
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e0e0e0;
+
+  span:first-of-type {
+    font-weight: 600;
+    color: #1976d2;
+    font-size: 14px;
+  }
+
+  mat-icon { color: #1976d2; font-size: 18px; width: 18px; height: 18px; }
+}
+
+.mapping-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mapping-row {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px 12px;
+  background: #fff;
+
+  &.unmapped {
+    background: #fafafa;
+    opacity: 0.75;
+
+    .mapping-name { color: #777; font-weight: 400; }
+  }
+}
+
+.mapping-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mapping-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.mapping-desc {
+  font-size: 12px;
+  color: #888;
+  margin-left: 6px;
+}
+
+.global-tag {
+  display: inline-block;
+  background: #eceff1;
+  color: #607d8b;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
+.mapping-fields {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e0e0e0;
+}
+
+// Slurp drop-zone stub (disabled)
+.slurp-dropzone {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 2px dashed #ccc;
+  border-radius: 6px;
+  background: #fafafa;
+  color: #aaa;
+  font-size: 13px;
+  cursor: not-allowed;
+  pointer-events: none;
+  user-select: none;
+
+  mat-icon { color: #ccc; }
+}
+
+// Action row
 .action-row {
   display: flex;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 16px;
+  align-items: center;
 
   .save-btn {
     background-color: #4caf50 !important;
     color: white !important;
+
+    &[disabled] { opacity: 0.55; }
+  }
+
+  .undo-btn {
+    color: #888;
+    min-width: 40px;
+    width: 40px;
+    padding: 0;
+
+    .mat-icon { margin: 0; }
   }
 }
 

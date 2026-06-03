@@ -1,14 +1,11 @@
 import { Component, OnInit } from '@angular/core';
-import { FormControl, Validators } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RegiApiService } from '../services/regi-api.service';
 import {
-  CmdTarget, CmdAction, CmdPhrasing,
-  RenderChannel, BloomContent, HighlightStyle, ValueType,
-  RecoveryClass, PhrasingSource
+  Widget, WidgetCommand, Command,
+  RenderIntent, HttpMethod
 } from '../models/command-action.model';
-
-const DEFAULT_VERSION = '1.0';
 
 @Component({
   selector: 'app-command-action',
@@ -17,86 +14,22 @@ const DEFAULT_VERSION = '1.0';
 })
 export class CommandActionComponent implements OnInit {
 
-  // ========================================
-  // ENUM OPTIONS (for dropdowns)
-  // ========================================
-  renderChannels: RenderChannel[] = ['speak', 'print', 'bloom'];
-  bloomContents: BloomContent[] = ['editable', 'readonly', 'pdf', 'report', 'balloon'];
-  highlightStyles: HighlightStyle[] = ['label-glow', 'border', 'none'];
-  valueTypes: ValueType[] = ['number', 'string', 'bool', 'enum'];
-  recoveryClasses: RecoveryClass[] = ['act', 'confirm'];
-  phrasingSources: PhrasingSource[] = ['seed', 'mined'];
+  renderIntents: RenderIntent[] = ['bloom', 'zoom', 'speak'];
+  httpMethods: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
-  // ========================================
-  // TARGETS state
-  // ========================================
-  targets: CmdTarget[] = [];
-  filteredTargets: CmdTarget[] = [];
-  selectedTarget: CmdTarget | null = null;
-  isLoadingTargets = false;
-  isSavingTarget = false;
-  targetSearchControl = new FormControl<string>('');
+  // ============= WIDGETS =============
+  widgets: Widget[] = [];
+  private widgetsSnapshot: Widget[] = [];
+  selectedWidget: Widget | null = null;
+  isLoadingWidgets = false;
+  isSavingWidgets = false;
 
-  tWidgetCtrl = new FormControl<string>('', { nonNullable: true });
-  tLabelCtrl = new FormControl<string>('', { nonNullable: true });
-  tRenderChannelCtrl = new FormControl<RenderChannel>('print', { nonNullable: true });
-  tBloomContentCtrl = new FormControl<BloomContent | null>(null);
-  tHighlightStyleCtrl = new FormControl<HighlightStyle>('none', { nonNullable: true });
-  tApiEndpointCtrl = new FormControl<string | null>(null);
-  tApiFieldCtrl = new FormControl<string | null>(null);
-  tValueTypeCtrl = new FormControl<ValueType | null>(null);
-  tChatSettableCtrl = new FormControl<boolean>(false, { nonNullable: true });
-  tRenderHintsCtrl = new FormControl<string | null>(null);
-  tIsEnabledCtrl = new FormControl<boolean>(true, { nonNullable: true });
-  tVersionCtrl = new FormControl<string>(DEFAULT_VERSION, { nonNullable: true });
-
-  private originalTarget: CmdTarget | null = null;
-
-  // ========================================
-  // ACTIONS state
-  // ========================================
-  actions: CmdAction[] = [];
-  filteredActions: CmdAction[] = [];
-  selectedAction: CmdAction | null = null;
-  isLoadingActions = false;
-  isSavingAction = false;
-  actionSearchControl = new FormControl<string>('');
-
-  aVerbCtrl = new FormControl<string>('', { nonNullable: true });
-  aRecoveryClassCtrl = new FormControl<RecoveryClass>('act', { nonNullable: true });
-  aStoresTouchedCtrl = new FormControl<string | null>(null);
-  aIsEnabledCtrl = new FormControl<boolean>(true, { nonNullable: true });
-  aVersionCtrl = new FormControl<string>(DEFAULT_VERSION, { nonNullable: true });
-
-  private originalAction: CmdAction | null = null;
-
-  // ========================================
-  // PHRASINGS state
-  // ========================================
-  phrasings: CmdPhrasing[] = [];
-  filteredPhrasings: CmdPhrasing[] = [];
-  selectedPhrasing: CmdPhrasing | null = null;
-  isLoadingPhrasings = false;
-  isSavingPhrasing = false;
-  phrasingSearchControl = new FormControl<string>('');
-  phrasingTargetFilterCtrl = new FormControl<number | null>(null);
-
-  pTargetIdCtrl = new FormControl<number | null>(null, [Validators.required]);
-  pActionIdCtrl = new FormControl<number | null>(null);
-  pPhraseCtrl = new FormControl<string>('', { nonNullable: true });
-  pSourceCtrl = new FormControl<PhrasingSource>('seed', { nonNullable: true });
-  pIsEnabledCtrl = new FormControl<boolean>(true, { nonNullable: true });
-  pVersionCtrl = new FormControl<string>(DEFAULT_VERSION, { nonNullable: true });
-
-  private originalPhrasing: CmdPhrasing | null = null;
-
-  // Bulk add
-  bulkTargetIdCtrl = new FormControl<number | null>(null, [Validators.required]);
-  bulkActionIdCtrl = new FormControl<number | null>(null);
-  bulkSourceCtrl = new FormControl<PhrasingSource>('seed', { nonNullable: true });
-  bulkVersionCtrl = new FormControl<string>(DEFAULT_VERSION, { nonNullable: true });
-  bulkPhrasesCtrl = new FormControl<string>('', { nonNullable: true });
-  isBulkAdding = false;
+  // ============= COMMANDS =============
+  commands: Command[] = [];
+  selectedCommand: Command | null = null;
+  private originalSelectedCommand: Command | null = null;
+  isLoadingCommands = false;
+  isSavingCommand = false;
 
   constructor(
     private apiService: RegiApiService,
@@ -104,542 +37,328 @@ export class CommandActionComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadTargets();
-    this.loadActions();
-    this.loadPhrasings();
-
-    // Live-filter the sidebar lists as the user types
-    this.targetSearchControl.valueChanges.subscribe(() => this.recomputeFilteredTargets());
-    this.actionSearchControl.valueChanges.subscribe(() => this.recomputeFilteredActions());
-    this.phrasingSearchControl.valueChanges.subscribe(() => this.recomputeFilteredPhrasings());
-
-    // Keep chatSettable enabled state in sync with dependent fields
-    this.tRenderChannelCtrl.valueChanges.subscribe(() => this.refreshChatSettableEnablement());
-    this.tBloomContentCtrl.valueChanges.subscribe(() => this.refreshChatSettableEnablement());
-    this.tApiEndpointCtrl.valueChanges.subscribe(() => this.refreshChatSettableEnablement());
-    this.tApiFieldCtrl.valueChanges.subscribe(() => this.refreshChatSettableEnablement());
-
-    // bloomContent is only meaningful when channel === 'bloom'
-    this.tRenderChannelCtrl.valueChanges.subscribe(ch => {
-      if (ch !== 'bloom') {
-        this.tBloomContentCtrl.setValue(null);
-        this.tBloomContentCtrl.disable({ emitEvent: false });
-      } else {
-        this.tBloomContentCtrl.enable({ emitEvent: false });
-      }
-    });
-
-    // storesTouched only allowed when recoveryClass === 'confirm'
-    this.aRecoveryClassCtrl.valueChanges.subscribe(rc => {
-      if (rc !== 'confirm') {
-        this.aStoresTouchedCtrl.setValue(null);
-        this.aStoresTouchedCtrl.disable({ emitEvent: false });
-      } else {
-        this.aStoresTouchedCtrl.enable({ emitEvent: false });
-      }
-    });
+    this.loadWidgets();
+    this.loadCommands();
   }
 
-  // ============================================================
-  // TARGETS
-  // ============================================================
+  // ==========================================================================
+  // WIDGETS — whole-collection replace
+  // ==========================================================================
 
-  loadTargets(): void {
-    this.isLoadingTargets = true;
-    this.apiService.listCmdTargets().subscribe({
+  loadWidgets(): void {
+    this.isLoadingWidgets = true;
+    this.apiService.getWidgets().subscribe({
       next: (rows: any) => {
-        this.targets = Array.isArray(rows) ? rows : (rows?.targets ?? rows?.data ?? []);
-        this.recomputeFilteredTargets();
-        this.isLoadingTargets = false;
+        const list: Widget[] = Array.isArray(rows) ? rows : (rows?.widgets ?? rows?.data ?? []);
+        list.forEach(w => { if (!Array.isArray(w.commands)) w.commands = []; });
+        this.widgets = list;
+        this.widgetsSnapshot = this.deepClone(list);
+        this.isLoadingWidgets = false;
+        if (this.selectedWidget) {
+          const k = this.widgetKey(this.selectedWidget);
+          this.selectedWidget = this.widgets.find(w => this.widgetKey(w) === k) ?? null;
+        }
       },
-      error: () => {
-        this.targets = [];
-        this.recomputeFilteredTargets();
-        this.isLoadingTargets = false;
-        this.snackBar.open('Failed to load targets', 'Close', { duration: 5000 });
+      error: (err) => {
+        this.widgets = [];
+        this.widgetsSnapshot = [];
+        this.isLoadingWidgets = false;
+        this.snackBar.open(`Failed to load widgets: ${this.errMsg(err)}`, 'Close', { duration: 6000 });
       }
     });
   }
 
-  private recomputeFilteredTargets(): void {
-    const q = (this.targetSearchControl.value || '').trim().toLowerCase();
-    this.filteredTargets = !q
-      ? this.targets.slice()
-      : this.targets.filter(t =>
-          t.widget.toLowerCase().includes(q) ||
-          t.label.toLowerCase().includes(q)
-        );
+  selectWidget(w: Widget): void {
+    this.selectedWidget = w;
   }
 
-  selectTarget(t: CmdTarget): void {
-    this.selectedTarget = t;
-    this.originalTarget = { ...t };
-    this.tWidgetCtrl.setValue(t.widget);
-    this.tLabelCtrl.setValue(t.label);
-    this.tRenderChannelCtrl.setValue(t.renderChannel);
-    this.tBloomContentCtrl.setValue(t.bloomContent ?? null);
-    this.tHighlightStyleCtrl.setValue(t.highlightStyle);
-    this.tApiEndpointCtrl.setValue(t.apiEndpoint ?? null);
-    this.tApiFieldCtrl.setValue(t.apiField ?? null);
-    this.tValueTypeCtrl.setValue(t.valueType ?? null);
-    this.tChatSettableCtrl.setValue(t.chatSettable);
-    this.tRenderHintsCtrl.setValue(t.renderHints ?? null);
-    this.tIsEnabledCtrl.setValue(t.isEnabled);
-    this.tVersionCtrl.setValue(t.cmdActionVersion || DEFAULT_VERSION);
-    this.tVersionCtrl.disable({ emitEvent: false });
-
-    if (t.renderChannel === 'bloom') this.tBloomContentCtrl.enable({ emitEvent: false });
-    else this.tBloomContentCtrl.disable({ emitEvent: false });
-
-    this.refreshChatSettableEnablement();
+  newWidget(): void {
+    const stub: Widget = {
+      widgetId: 0,
+      name: `NewWidget_${Date.now().toString(36)}`,
+      description: '',
+      renderIntent: 'bloom',
+      isEnabled: true,
+      commands: []
+    };
+    this.widgets = [stub, ...this.widgets];
+    this.selectedWidget = stub;
   }
 
-  private refreshChatSettableEnablement(): void {
-    const channel = this.tRenderChannelCtrl.value;
-    const bloom = this.tBloomContentCtrl.value;
-    const endpoint = (this.tApiEndpointCtrl.value || '').trim();
-    const field = (this.tApiFieldCtrl.value || '').trim();
-    const allowed = channel === 'bloom' && bloom === 'editable' && endpoint.length > 0 && field.length > 0;
-    if (allowed) {
-      this.tChatSettableCtrl.enable({ emitEvent: false });
+  undoSelectedWidget(): void {
+    if (!this.selectedWidget) return;
+    const idx = this.widgets.indexOf(this.selectedWidget);
+    if (idx < 0) return;
+    const id = this.selectedWidget.widgetId;
+    const snap = id > 0 ? this.widgetsSnapshot.find(s => s.widgetId === id) : null;
+    if (snap) {
+      this.widgets[idx] = this.deepClone(snap);
+      this.selectedWidget = this.widgets[idx];
     } else {
-      if (this.tChatSettableCtrl.value) this.tChatSettableCtrl.setValue(false, { emitEvent: false });
-      this.tChatSettableCtrl.disable({ emitEvent: false });
+      this.widgets.splice(idx, 1);
+      this.selectedWidget = this.widgets[0] ?? null;
     }
   }
 
-  get chatSettableHint(): string {
-    return 'Requires renderChannel=bloom, bloomContent=editable, plus apiEndpoint and apiField.';
+  // Mapped Commands — global catalog drives the row list
+
+  isCommandMapped(commandId: number): boolean {
+    return !!this.selectedWidget?.commands.some(c => c.commandId === commandId);
   }
 
-  newTarget(): void {
-    const stub: Partial<CmdTarget> = {
-      widget: 'NewWidget',
-      label: 'newField',
-      renderChannel: 'print',
-      bloomContent: null,
-      highlightStyle: 'none',
-      apiEndpoint: null,
-      apiField: null,
-      valueType: null,
-      chatSettable: false,
-      renderHints: null,
-      isEnabled: true,
-      cmdActionVersion: DEFAULT_VERSION
-    };
-    this.apiService.createCmdTarget(stub).subscribe({
-      next: (created) => {
-        this.targets = [created, ...this.targets];
-        this.recomputeFilteredTargets();
-        this.selectTarget(created);
-        this.snackBar.open('Target created', 'Close', { duration: 2000 });
+  mappingFor(commandId: number): WidgetCommand | null {
+    if (!this.selectedWidget) return null;
+    return this.selectedWidget.commands.find(c => c.commandId === commandId) ?? null;
+  }
+
+  toggleMapping(commandId: number, mapped: boolean): void {
+    if (!this.selectedWidget) return;
+    if (mapped) {
+      if (!this.selectedWidget.commands.some(c => c.commandId === commandId)) {
+        this.selectedWidget.commands.push({
+          commandId,
+          requiresConfirmation: false,
+          httpMethod: null,
+          apiEndpoint: null,
+          bodyTemplate: null,
+          isEnabled: true
+        });
+      }
+    } else {
+      this.selectedWidget.commands = this.selectedWidget.commands.filter(c => c.commandId !== commandId);
+    }
+  }
+
+  onMappingMethodChange(mapping: WidgetCommand): void {
+    if (!mapping.httpMethod) {
+      mapping.apiEndpoint = null;
+      mapping.bodyTemplate = null;
+    }
+  }
+
+  isSurfacing(mapping: WidgetCommand | null): boolean {
+    return !mapping || !mapping.httpMethod;
+  }
+
+  hasAnyWidgetChanges(): boolean {
+    return JSON.stringify(this.widgets) !== JSON.stringify(this.widgetsSnapshot);
+  }
+
+  hasSelectedWidgetChanges(): boolean {
+    if (!this.selectedWidget) return false;
+    const id = this.selectedWidget.widgetId;
+    if (!id) return true;
+    const snap = this.widgetsSnapshot.find(s => s.widgetId === id);
+    if (!snap) return true;
+    return JSON.stringify(this.selectedWidget) !== JSON.stringify(snap);
+  }
+
+  deleteWidget(): void {
+    if (!this.selectedWidget) return;
+    if (!confirm(`Delete widget "${this.selectedWidget.name}" and all its command mappings?`)) return;
+    const target = this.selectedWidget;
+    if (!target.widgetId) {
+      this.widgets = this.widgets.filter(w => w !== target);
+      this.selectedWidget = this.widgets[0] ?? null;
+      return;
+    }
+    this.apiService.deleteWidget(target.widgetId).subscribe({
+      next: () => {
+        this.widgets = this.widgets.filter(w => w !== target);
+        this.widgetsSnapshot = this.widgetsSnapshot.filter(w => w.widgetId !== target.widgetId);
+        this.selectedWidget = this.widgets[0] ?? null;
+        this.snackBar.open('Widget deleted', 'Close', { duration: 2500 });
       },
-      error: () => this.snackBar.open('Failed to create target', 'Close', { duration: 5000 })
+      error: (err) => this.snackBar.open(`Delete widget failed: ${this.errMsg(err)}`, 'Close', { duration: 6000 })
     });
   }
 
-  hasTargetChanges(): boolean {
-    if (!this.originalTarget) return false;
-    const o = this.originalTarget;
-    return this.tWidgetCtrl.value !== o.widget ||
-      this.tLabelCtrl.value !== o.label ||
-      this.tRenderChannelCtrl.value !== o.renderChannel ||
-      (this.tBloomContentCtrl.value ?? null) !== (o.bloomContent ?? null) ||
-      this.tHighlightStyleCtrl.value !== o.highlightStyle ||
-      (this.tApiEndpointCtrl.value ?? null) !== (o.apiEndpoint ?? null) ||
-      (this.tApiFieldCtrl.value ?? null) !== (o.apiField ?? null) ||
-      (this.tValueTypeCtrl.value ?? null) !== (o.valueType ?? null) ||
-      this.tChatSettableCtrl.value !== o.chatSettable ||
-      (this.tRenderHintsCtrl.value ?? null) !== (o.renderHints ?? null) ||
-      this.tIsEnabledCtrl.value !== o.isEnabled;
-  }
-
-  saveTarget(): void {
-    if (!this.selectedTarget || !this.originalTarget) return;
-
-    // Validate renderHints JSON if provided
-    const hints = (this.tRenderHintsCtrl.value || '').trim();
-    if (hints) {
-      try { JSON.parse(hints); }
-      catch {
-        this.snackBar.open('Render Hints is not valid JSON', 'Close', { duration: 4000 });
+  saveAllWidgets(): void {
+    for (const w of this.widgets) {
+      if (!w.name?.trim()) {
+        this.snackBar.open(`A widget is missing a name`, 'Close', { duration: 5000 });
         return;
       }
-    }
-
-    // Mirror server CHECK: bloomContent required iff renderChannel === 'bloom'
-    if (this.tRenderChannelCtrl.value === 'bloom' && !this.tBloomContentCtrl.value) {
-      this.snackBar.open('Bloom Content is required when render channel is bloom', 'Close', { duration: 4000 });
-      return;
-    }
-
-    const updated: CmdTarget = {
-      ...this.originalTarget,
-      widget: this.tWidgetCtrl.value,
-      label: this.tLabelCtrl.value,
-      renderChannel: this.tRenderChannelCtrl.value,
-      bloomContent: this.tRenderChannelCtrl.value === 'bloom' ? this.tBloomContentCtrl.value : null,
-      highlightStyle: this.tHighlightStyleCtrl.value,
-      apiEndpoint: this.tApiEndpointCtrl.value || null,
-      apiField: this.tApiFieldCtrl.value || null,
-      valueType: this.tValueTypeCtrl.value || null,
-      chatSettable: this.tChatSettableCtrl.value,
-      renderHints: hints || null,
-      isEnabled: this.tIsEnabledCtrl.value
-    };
-
-    this.isSavingTarget = true;
-    this.apiService.updateCmdTarget(this.selectedTarget.targetId, updated).subscribe({
-      next: (saved) => {
-        const idx = this.targets.findIndex(x => x.targetId === saved.targetId);
-        if (idx >= 0) this.targets[idx] = saved;
-        this.selectTarget(saved);
-        this.isSavingTarget = false;
-        this.snackBar.open('Target saved', 'Close', { duration: 2000 });
-      },
-      error: () => {
-        this.isSavingTarget = false;
-        this.snackBar.open('Failed to save target', 'Close', { duration: 5000 });
+      for (const m of w.commands) {
+        const hasMethod = !!m.httpMethod;
+        const hasEndpoint = !!(m.apiEndpoint && m.apiEndpoint.trim());
+        if (hasMethod !== hasEndpoint) {
+          this.snackBar.open(
+            `Widget "${w.name}": a mapping is half-configured — set both Http Method and Api Endpoint, or leave both blank (surfacing).`,
+            'Close', { duration: 6000 });
+          return;
+        }
+        if (m.bodyTemplate && m.bodyTemplate.trim()) {
+          try { JSON.parse(m.bodyTemplate); }
+          catch {
+            this.snackBar.open(`Widget "${w.name}": body template is not valid JSON`, 'Close', { duration: 5000 });
+            return;
+          }
+        }
       }
-    });
-  }
+    }
 
-  deleteTarget(): void {
-    if (!this.selectedTarget) return;
-    if (!confirm(`Delete target "${this.selectedTarget.widget} · ${this.selectedTarget.label}"?`)) return;
-    const id = this.selectedTarget.targetId;
-    this.apiService.deleteCmdTarget(id).subscribe({
-      next: () => {
-        this.targets = this.targets.filter(t => t.targetId !== id);
-        this.recomputeFilteredTargets();
-        this.selectedTarget = null;
-        this.originalTarget = null;
-        this.snackBar.open('Target deleted', 'Close', { duration: 2000 });
-      },
-      error: () => this.snackBar.open('Failed to delete target', 'Close', { duration: 5000 })
-    });
-  }
-
-  // ============================================================
-  // ACTIONS
-  // ============================================================
-
-  loadActions(): void {
-    this.isLoadingActions = true;
-    this.apiService.listCmdActions().subscribe({
+    this.isSavingWidgets = true;
+    const previouslySelectedKey = this.selectedWidget ? this.widgetKey(this.selectedWidget) : null;
+    this.apiService.saveAllWidgets(this.widgets).subscribe({
       next: (rows: any) => {
-        this.actions = Array.isArray(rows) ? rows : (rows?.actions ?? rows?.data ?? []);
-        this.recomputeFilteredActions();
-        this.isLoadingActions = false;
+        const list: Widget[] = Array.isArray(rows) ? rows : (rows?.widgets ?? rows?.data ?? []);
+        list.forEach(w => { if (!Array.isArray(w.commands)) w.commands = []; });
+        this.widgets = list;
+        this.widgetsSnapshot = this.deepClone(list);
+        if (previouslySelectedKey) {
+          this.selectedWidget =
+            this.widgets.find(w => this.widgetKey(w) === previouslySelectedKey) ??
+            this.widgets[0] ?? null;
+        }
+        this.isSavingWidgets = false;
+        this.snackBar.open('Widgets saved', 'Close', { duration: 2500 });
       },
-      error: () => {
-        this.actions = [];
-        this.recomputeFilteredActions();
-        this.isLoadingActions = false;
-        this.snackBar.open('Failed to load actions', 'Close', { duration: 5000 });
+      error: (err) => {
+        this.isSavingWidgets = false;
+        this.snackBar.open(`Save widgets failed: ${this.errMsg(err)}`, 'Close', { duration: 6000 });
       }
     });
   }
 
-  private recomputeFilteredActions(): void {
-    const q = (this.actionSearchControl.value || '').trim().toLowerCase();
-    this.filteredActions = !q
-      ? this.actions.slice()
-      : this.actions.filter(a => a.verb.toLowerCase().includes(q));
+  private widgetKey(w: Widget): string {
+    return w.widgetId > 0 ? `id:${w.widgetId}` : `name:${w.name}`;
   }
 
-  selectAction(a: CmdAction): void {
-    this.selectedAction = a;
-    this.originalAction = { ...a };
-    this.aVerbCtrl.setValue(a.verb);
-    this.aRecoveryClassCtrl.setValue(a.recoveryClass);
-    this.aStoresTouchedCtrl.setValue(a.storesTouched ?? null);
-    this.aIsEnabledCtrl.setValue(a.isEnabled);
-    this.aVersionCtrl.setValue(a.cmdActionVersion || DEFAULT_VERSION);
-    this.aVersionCtrl.disable({ emitEvent: false });
+  // ==========================================================================
+  // COMMANDS — global catalog (whole-collection replace)
+  // ==========================================================================
 
-    if (a.recoveryClass === 'confirm') this.aStoresTouchedCtrl.enable({ emitEvent: false });
-    else this.aStoresTouchedCtrl.disable({ emitEvent: false });
-  }
-
-  newAction(): void {
-    const stub: Partial<CmdAction> = {
-      verb: 'newVerb',
-      recoveryClass: 'act',
-      storesTouched: null,
-      isEnabled: true,
-      cmdActionVersion: DEFAULT_VERSION
-    };
-    this.apiService.createCmdAction(stub).subscribe({
-      next: (created) => {
-        this.actions = [created, ...this.actions];
-        this.recomputeFilteredActions();
-        this.selectAction(created);
-        this.snackBar.open('Action created', 'Close', { duration: 2000 });
-      },
-      error: () => this.snackBar.open('Failed to create action', 'Close', { duration: 5000 })
-    });
-  }
-
-  hasActionChanges(): boolean {
-    if (!this.originalAction) return false;
-    const o = this.originalAction;
-    return this.aVerbCtrl.value !== o.verb ||
-      this.aRecoveryClassCtrl.value !== o.recoveryClass ||
-      (this.aStoresTouchedCtrl.value ?? null) !== (o.storesTouched ?? null) ||
-      this.aIsEnabledCtrl.value !== o.isEnabled;
-  }
-
-  saveAction(): void {
-    if (!this.selectedAction || !this.originalAction) return;
-
-    const stores = (this.aStoresTouchedCtrl.value || '').trim();
-    if (stores) {
-      try { JSON.parse(stores); }
-      catch {
-        this.snackBar.open('Stores Touched is not valid JSON', 'Close', { duration: 4000 });
-        return;
-      }
-    }
-
-    const updated: CmdAction = {
-      ...this.originalAction,
-      verb: this.aVerbCtrl.value,
-      recoveryClass: this.aRecoveryClassCtrl.value,
-      storesTouched: this.aRecoveryClassCtrl.value === 'confirm' ? (stores || null) : null,
-      isEnabled: this.aIsEnabledCtrl.value
-    };
-
-    this.isSavingAction = true;
-    this.apiService.updateCmdAction(this.selectedAction.actionId, updated).subscribe({
-      next: (saved) => {
-        const idx = this.actions.findIndex(x => x.actionId === saved.actionId);
-        if (idx >= 0) this.actions[idx] = saved;
-        this.selectAction(saved);
-        this.isSavingAction = false;
-        this.snackBar.open('Action saved', 'Close', { duration: 2000 });
-      },
-      error: () => {
-        this.isSavingAction = false;
-        this.snackBar.open('Failed to save action', 'Close', { duration: 5000 });
-      }
-    });
-  }
-
-  deleteAction(): void {
-    if (!this.selectedAction) return;
-    if (!confirm(`Delete action "${this.selectedAction.verb}"?`)) return;
-    const id = this.selectedAction.actionId;
-    this.apiService.deleteCmdAction(id).subscribe({
-      next: () => {
-        this.actions = this.actions.filter(a => a.actionId !== id);
-        this.recomputeFilteredActions();
-        this.selectedAction = null;
-        this.originalAction = null;
-        this.snackBar.open('Action deleted', 'Close', { duration: 2000 });
-      },
-      error: () => this.snackBar.open('Failed to delete action', 'Close', { duration: 5000 })
-    });
-  }
-
-  // ============================================================
-  // PHRASINGS
-  // ============================================================
-
-  loadPhrasings(): void {
-    this.isLoadingPhrasings = true;
-    const targetId = this.phrasingTargetFilterCtrl.value;
-    const filters = targetId !== null && targetId !== undefined ? { targetId } : undefined;
-    this.apiService.listCmdPhrasings(filters).subscribe({
+  loadCommands(): void {
+    this.isLoadingCommands = true;
+    this.apiService.getCommands().subscribe({
       next: (rows: any) => {
-        this.phrasings = Array.isArray(rows) ? rows : (rows?.phrasings ?? rows?.data ?? []);
-        this.recomputeFilteredPhrasings();
-        this.isLoadingPhrasings = false;
+        const list: Command[] = Array.isArray(rows) ? rows : (rows?.commands ?? rows?.data ?? []);
+        this.commands = list;
+        this.isLoadingCommands = false;
       },
-      error: () => {
-        this.phrasings = [];
-        this.recomputeFilteredPhrasings();
-        this.isLoadingPhrasings = false;
-        this.snackBar.open('Failed to load phrasings', 'Close', { duration: 5000 });
+      error: (err: HttpErrorResponse) => {
+        // GET /commands may not be deployed yet — treat 404 as empty catalog.
+        this.commands = [];
+        this.isLoadingCommands = false;
+        if (err?.status === 404) return;
+        this.snackBar.open(`Failed to load commands: ${this.errMsg(err)}`, 'Close', { duration: 6000 });
       }
     });
   }
 
-  private recomputeFilteredPhrasings(): void {
-    const q = (this.phrasingSearchControl.value || '').trim().toLowerCase();
-    this.filteredPhrasings = !q
-      ? this.phrasings.slice()
-      : this.phrasings.filter(p => p.phrase.toLowerCase().includes(q));
+  selectCommand(c: Command): void {
+    this.selectedCommand = c;
+    this.originalSelectedCommand = this.deepClone(c);
   }
 
-  onPhrasingTargetFilterChange(): void {
-    this.selectedPhrasing = null;
-    this.originalPhrasing = null;
-    this.loadPhrasings();
-  }
-
-  targetLabel(targetId: number | null | undefined): string {
-    if (targetId === null || targetId === undefined) return '';
-    const t = this.targets.find(x => x.targetId === targetId);
-    return t ? `${t.widget} · ${t.label}` : `#${targetId}`;
-  }
-
-  actionLabel(actionId: number | null | undefined): string {
-    if (actionId === null || actionId === undefined) return '';
-    const a = this.actions.find(x => x.actionId === actionId);
-    return a ? a.verb : `#${actionId}`;
-  }
-
-  selectPhrasing(p: CmdPhrasing): void {
-    this.selectedPhrasing = p;
-    this.originalPhrasing = { ...p };
-    this.pTargetIdCtrl.setValue(p.targetId);
-    this.pActionIdCtrl.setValue(p.actionId ?? null);
-    this.pPhraseCtrl.setValue(p.phrase);
-    this.pSourceCtrl.setValue(p.source);
-    this.pIsEnabledCtrl.setValue(p.isEnabled);
-    this.pVersionCtrl.setValue(p.cmdActionVersion || DEFAULT_VERSION);
-    this.pVersionCtrl.disable({ emitEvent: false });
-  }
-
-  newPhrasing(): void {
-    const targetId = this.phrasingTargetFilterCtrl.value
-      ?? this.targets[0]?.targetId
-      ?? null;
-    if (targetId === null) {
-      this.snackBar.open('Create a Target first', 'Close', { duration: 4000 });
-      return;
-    }
-    const stub: Partial<CmdPhrasing> = {
-      targetId,
-      actionId: null,
-      phrase: 'new phrase',
-      source: 'seed',
-      isEnabled: true,
-      cmdActionVersion: DEFAULT_VERSION
+  newCommand(): void {
+    const stub: Command = {
+      commandId: 0,
+      name: `newCommand_${Date.now().toString(36)}`,
+      description: '',
+      verbTokens: '[]',
+      isEnabled: true
     };
-    this.apiService.createCmdPhrasing(stub).subscribe({
-      next: (created) => {
-        this.phrasings = [created, ...this.phrasings];
-        this.recomputeFilteredPhrasings();
-        this.selectPhrasing(created);
-        this.snackBar.open('Phrasing created', 'Close', { duration: 2000 });
-      },
-      error: () => this.snackBar.open('Failed to create phrasing', 'Close', { duration: 5000 })
-    });
+    this.commands = [stub, ...this.commands];
+    this.selectCommand(stub);
   }
 
-  hasPhrasingChanges(): boolean {
-    if (!this.originalPhrasing) return false;
-    const o = this.originalPhrasing;
-    return this.pTargetIdCtrl.value !== o.targetId ||
-      (this.pActionIdCtrl.value ?? null) !== (o.actionId ?? null) ||
-      this.pPhraseCtrl.value !== o.phrase ||
-      this.pSourceCtrl.value !== o.source ||
-      this.pIsEnabledCtrl.value !== o.isEnabled;
+  hasCommandChanges(): boolean {
+    if (!this.selectedCommand || !this.originalSelectedCommand) return false;
+    return JSON.stringify(this.selectedCommand) !== JSON.stringify(this.originalSelectedCommand);
   }
 
-  savePhrasing(): void {
-    if (!this.selectedPhrasing || !this.originalPhrasing) return;
-    const targetId = this.pTargetIdCtrl.value;
-    if (targetId === null || targetId === undefined) {
-      this.snackBar.open('Target is required', 'Close', { duration: 4000 });
+  saveCommand(): void {
+    if (!this.selectedCommand) return;
+    const c = this.selectedCommand;
+
+    if (!c.name?.trim()) {
+      this.snackBar.open('Command name is required', 'Close', { duration: 4000 });
       return;
     }
-    const updated: CmdPhrasing = {
-      ...this.originalPhrasing,
-      targetId,
-      actionId: this.pActionIdCtrl.value ?? null,
-      phrase: this.pPhraseCtrl.value,
-      source: this.pSourceCtrl.value,
-      isEnabled: this.pIsEnabledCtrl.value
-    };
+    const vt = (c.verbTokens || '').trim();
+    if (!vt) {
+      this.snackBar.open('Verb Tokens must be a JSON array (e.g. ["set","change"])', 'Close', { duration: 5000 });
+      return;
+    }
+    try {
+      const parsed = JSON.parse(vt);
+      if (!Array.isArray(parsed)) throw new Error('not array');
+    } catch {
+      this.snackBar.open('Verb Tokens must be a JSON array of strings', 'Close', { duration: 5000 });
+      return;
+    }
 
-    this.isSavingPhrasing = true;
-    this.apiService.updateCmdPhrasing(this.selectedPhrasing.phrasingId, updated).subscribe({
-      next: (saved) => {
-        const idx = this.phrasings.findIndex(x => x.phrasingId === saved.phrasingId);
-        if (idx >= 0) this.phrasings[idx] = saved;
-        this.selectPhrasing(saved);
-        this.isSavingPhrasing = false;
-        this.snackBar.open('Phrasing saved', 'Close', { duration: 2000 });
+    this.isSavingCommand = true;
+    const previousKey = c.commandId > 0 ? `id:${c.commandId}` : `name:${c.name}`;
+    this.apiService.saveAllCommands(this.commands).subscribe({
+      next: (rows: any) => {
+        const list: Command[] = Array.isArray(rows) ? rows : (rows?.commands ?? rows?.data ?? []);
+        this.commands = list;
+        const restored = this.commands.find(x =>
+          (x.commandId > 0 ? `id:${x.commandId}` : `name:${x.name}`) === previousKey
+        ) ?? this.commands[0] ?? null;
+        if (restored) {
+          this.selectCommand(restored);
+        } else {
+          this.selectedCommand = null;
+          this.originalSelectedCommand = null;
+        }
+        this.isSavingCommand = false;
+        this.snackBar.open('Command saved', 'Close', { duration: 2500 });
       },
-      error: () => {
-        this.isSavingPhrasing = false;
-        this.snackBar.open('Failed to save phrasing', 'Close', { duration: 5000 });
+      error: (err) => {
+        this.isSavingCommand = false;
+        this.snackBar.open(`Save command failed: ${this.errMsg(err)}`, 'Close', { duration: 6000 });
       }
     });
   }
 
-  deletePhrasing(): void {
-    if (!this.selectedPhrasing) return;
-    if (!confirm(`Delete phrasing "${this.selectedPhrasing.phrase}"?`)) return;
-    const id = this.selectedPhrasing.phrasingId;
-    this.apiService.deleteCmdPhrasing(id).subscribe({
-      next: () => {
-        this.phrasings = this.phrasings.filter(p => p.phrasingId !== id);
-        this.recomputeFilteredPhrasings();
-        this.selectedPhrasing = null;
-        this.originalPhrasing = null;
-        this.snackBar.open('Phrasing deleted', 'Close', { duration: 2000 });
-      },
-      error: () => this.snackBar.open('Failed to delete phrasing', 'Close', { duration: 5000 })
-    });
-  }
-
-  // ===== BULK ADD =====
-
-  get bulkPhraseCount(): number {
-    const raw = this.bulkPhrasesCtrl.value || '';
-    return raw.split('\n').map(s => s.trim()).filter(s => s.length > 0).length;
-  }
-
-  bulkAdd(): void {
-    const targetId = this.bulkTargetIdCtrl.value;
-    if (targetId === null || targetId === undefined) {
-      this.snackBar.open('Pick a target before adding phrases', 'Close', { duration: 4000 });
+  deleteCommand(): void {
+    if (!this.selectedCommand) return;
+    if (!confirm(`Delete command "${this.selectedCommand.name}"?`)) return;
+    const ref = this.selectedCommand;
+    this.commands = this.commands.filter(c => c !== ref);
+    if (!ref.commandId) {
+      this.selectedCommand = null;
+      this.originalSelectedCommand = null;
       return;
     }
-    const lines = (this.bulkPhrasesCtrl.value || '')
-      .split('\n')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-    if (lines.length === 0) {
-      this.snackBar.open('Paste one or more phrases', 'Close', { duration: 4000 });
-      return;
-    }
-    const actionId = this.bulkActionIdCtrl.value ?? null;
-    const source = this.bulkSourceCtrl.value || 'seed';
-    const version = (this.bulkVersionCtrl.value || DEFAULT_VERSION).trim() || DEFAULT_VERSION;
-
-    const payload: Partial<CmdPhrasing>[] = lines.map(phrase => ({
-      targetId,
-      actionId,
-      phrase,
-      source,
-      isEnabled: true,
-      cmdActionVersion: version
-    }));
-
-    this.isBulkAdding = true;
-    this.apiService.bulkCreateCmdPhrasings(payload).subscribe({
-      next: (created) => {
-        const rows = Array.isArray(created) ? created : [];
-        this.phrasings = [...rows, ...this.phrasings];
-        this.bulkPhrasesCtrl.setValue('');
-        this.isBulkAdding = false;
-        this.snackBar.open(`Added ${rows.length || lines.length} phrasings`, 'Close', { duration: 3000 });
-        // Refresh from server to ensure we have authoritative data
-        this.loadPhrasings();
+    this.isSavingCommand = true;
+    this.apiService.saveAllCommands(this.commands).subscribe({
+      next: (rows: any) => {
+        const list: Command[] = Array.isArray(rows) ? rows : (rows?.commands ?? rows?.data ?? []);
+        this.commands = list;
+        this.selectedCommand = null;
+        this.originalSelectedCommand = null;
+        this.isSavingCommand = false;
+        this.snackBar.open('Command deleted', 'Close', { duration: 2500 });
       },
-      error: () => {
-        this.isBulkAdding = false;
-        this.snackBar.open('Bulk add failed', 'Close', { duration: 5000 });
+      error: (err) => {
+        this.isSavingCommand = false;
+        this.snackBar.open(`Delete command failed: ${this.errMsg(err)}`, 'Close', { duration: 6000 });
       }
     });
   }
 
-  truncate(s: string | undefined | null, max = 50): string {
+  // ==========================================================================
+  // helpers
+  // ==========================================================================
+
+  private deepClone<T>(v: T): T {
+    return JSON.parse(JSON.stringify(v));
+  }
+
+  private errMsg(err: any): string {
+    const status = err?.status;
+    const body = err?.error;
+    const detail = (typeof body === 'string' && body) ||
+      body?.message || body?.error || body?.detail || err?.message || 'unknown error';
+    return status ? `${status} ${detail}` : detail;
+  }
+
+  truncate(s: string | null | undefined, max = 50): string {
     if (!s) return '';
     return s.length > max ? s.substring(0, max) + '...' : s;
   }

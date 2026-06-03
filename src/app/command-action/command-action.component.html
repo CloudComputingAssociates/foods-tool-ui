@@ -2,408 +2,265 @@
 
   <mat-tab-group class="inner-tabs" animationDuration="0ms">
 
-    <!-- ====================================================== -->
-    <!-- TARGETS                                                 -->
-    <!-- ====================================================== -->
-    <mat-tab label="Targets">
+    <!-- ===================================================================== -->
+    <!-- WIDGETS                                                                -->
+    <!-- ===================================================================== -->
+    <mat-tab label="Widgets">
       <div class="sub-tab-content">
 
         <div class="filter-bar">
-          <span class="filter-title">Filters</span>
-          <mat-form-field appearance="fill" class="search-field">
-            <mat-label>Search widget or label</mat-label>
-            <input matInput [formControl]="targetSearchControl" placeholder="e.g. UserSettings">
-          </mat-form-field>
-          <button mat-flat-button class="apply-btn" (click)="loadTargets()" [disabled]="isLoadingTargets" matTooltip="Reload">
+          <span class="filter-title">Widgets</span>
+          <span class="hint-text">{{ widgets.length }} loaded</span>
+          <button mat-flat-button class="apply-btn" (click)="loadWidgets()"
+                  [disabled]="isLoadingWidgets" matTooltip="Reload">
             <mat-icon>refresh</mat-icon>
           </button>
         </div>
         <div class="new-row">
-          <button mat-flat-button class="new-btn" (click)="newTarget()" matTooltip="Add new target">
+          <button mat-flat-button class="new-btn" (click)="newWidget()" matTooltip="Add new widget">
             <mat-icon>add</mat-icon>
           </button>
         </div>
 
-        <div class="results-layout" *ngIf="filteredTargets.length > 0 || selectedTarget">
+        <div class="results-layout" *ngIf="widgets.length > 0 || selectedWidget">
+
+          <!-- Left: widget list -->
           <div class="results-sidebar">
             <div class="row-list">
-              <div *ngIf="isLoadingTargets" class="loading-row">
+              <div *ngIf="isLoadingWidgets" class="loading-row">
                 <mat-spinner diameter="24"></mat-spinner><span>Loading...</span>
               </div>
-              <div *ngFor="let t of filteredTargets"
+              <div *ngFor="let w of widgets"
                    class="row-item"
-                   [class.selected]="selectedTarget?.targetId === t.targetId"
-                   (click)="selectTarget(t)">
+                   [class.selected]="selectedWidget === w"
+                   (click)="selectWidget(w)">
                 <div class="row-info">
-                  <span class="row-name">{{ t.widget }} · {{ t.label }}</span>
-                  <span class="row-meta">{{ t.renderChannel }}<span *ngIf="t.bloomContent"> / {{ t.bloomContent }}</span> <span *ngIf="!t.isEnabled" class="disabled-tag">disabled</span></span>
-                </div>
-                <span class="row-id">#{{ t.targetId }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="details-panel" *ngIf="selectedTarget">
-
-            <div class="form-row two-col">
-              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Widget</mat-label>
-                <input matInput [formControl]="tWidgetCtrl">
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Label</mat-label>
-                <input matInput [formControl]="tLabelCtrl">
-              </mat-form-field>
-            </div>
-
-            <div class="form-row two-col">
-              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Render Channel</mat-label>
-                <mat-select [formControl]="tRenderChannelCtrl">
-                  <mat-option *ngFor="let v of renderChannels" [value]="v">{{ v }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Bloom Content</mat-label>
-                <mat-select [formControl]="tBloomContentCtrl">
-                  <mat-option [value]="null">(none)</mat-option>
-                  <mat-option *ngFor="let v of bloomContents" [value]="v">{{ v }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-
-            <div class="form-row two-col">
-              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Highlight Style</mat-label>
-                <mat-select [formControl]="tHighlightStyleCtrl">
-                  <mat-option *ngFor="let v of highlightStyles" [value]="v">{{ v }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Value Type</mat-label>
-                <mat-select [formControl]="tValueTypeCtrl">
-                  <mat-option [value]="null">(none)</mat-option>
-                  <mat-option *ngFor="let v of valueTypes" [value]="v">{{ v }}</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-
-            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>API Endpoint</mat-label>
-              <input matInput [formControl]="tApiEndpointCtrl" placeholder="/api/user/settings">
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>API Field</mat-label>
-              <input matInput [formControl]="tApiFieldCtrl" placeholder="goalWeight">
-            </mat-form-field>
-
-            <div class="checkbox-row">
-              <mat-checkbox [formControl]="tChatSettableCtrl"
-                            [matTooltip]="tChatSettableCtrl.disabled ? chatSettableHint : 'Allow dispatcher to PUT this field from chat'">
-                Chat Settable
-              </mat-checkbox>
-              <span class="hint-text" *ngIf="tChatSettableCtrl.disabled">{{ chatSettableHint }}</span>
-            </div>
-
-            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>Render Hints (JSON)</mat-label>
-              <textarea matInput [formControl]="tRenderHintsCtrl" rows="3" placeholder='{ "tone": "celebratory" }'></textarea>
-            </mat-form-field>
-
-            <div class="form-row two-col">
-              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Command-Action Version</mat-label>
-                <input matInput [formControl]="tVersionCtrl">
-              </mat-form-field>
-              <div class="checkbox-col">
-                <mat-checkbox [formControl]="tIsEnabledCtrl">Enabled</mat-checkbox>
-                <span class="row-id-display">ID: {{ selectedTarget.targetId }}</span>
-              </div>
-            </div>
-
-            <div class="action-row">
-              <button mat-flat-button class="save-btn" (click)="saveTarget()"
-                      [disabled]="isSavingTarget || !hasTargetChanges()">
-                <mat-icon>check</mat-icon>
-                {{ isSavingTarget ? 'Saving...' : 'Save' }}
-              </button>
-              <button mat-stroked-button color="warn" (click)="deleteTarget()">Delete</button>
-            </div>
-          </div>
-
-          <div class="details-panel placeholder" *ngIf="!selectedTarget">
-            <p>Select a target or create a new one</p>
-          </div>
-        </div>
-
-        <div *ngIf="filteredTargets.length === 0 && !isLoadingTargets && !selectedTarget" class="empty-state">
-          <mat-icon>widgets</mat-icon>
-          <p>No targets. Click + to create one.</p>
-        </div>
-      </div>
-    </mat-tab>
-
-    <!-- ====================================================== -->
-    <!-- ACTIONS                                                 -->
-    <!-- ====================================================== -->
-    <mat-tab label="Actions">
-      <div class="sub-tab-content">
-
-        <div class="filter-bar">
-          <span class="filter-title">Filters</span>
-          <mat-form-field appearance="fill" class="search-field">
-            <mat-label>Search verb</mat-label>
-            <input matInput [formControl]="actionSearchControl" placeholder="e.g. set">
-          </mat-form-field>
-          <button mat-flat-button class="apply-btn" (click)="loadActions()" [disabled]="isLoadingActions" matTooltip="Reload">
-            <mat-icon>refresh</mat-icon>
-          </button>
-        </div>
-        <div class="new-row">
-          <button mat-flat-button class="new-btn" (click)="newAction()" matTooltip="Add new action">
-            <mat-icon>add</mat-icon>
-          </button>
-        </div>
-
-        <div class="results-layout" *ngIf="filteredActions.length > 0 || selectedAction">
-          <div class="results-sidebar">
-            <div class="row-list">
-              <div *ngIf="isLoadingActions" class="loading-row">
-                <mat-spinner diameter="24"></mat-spinner><span>Loading...</span>
-              </div>
-              <div *ngFor="let a of filteredActions"
-                   class="row-item"
-                   [class.selected]="selectedAction?.actionId === a.actionId"
-                   (click)="selectAction(a)">
-                <div class="row-info">
-                  <span class="row-name">{{ a.verb }}</span>
-                  <span class="row-meta">{{ a.recoveryClass }} <span *ngIf="!a.isEnabled" class="disabled-tag">disabled</span></span>
-                </div>
-                <span class="row-id">#{{ a.actionId }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="details-panel" *ngIf="selectedAction">
-
-            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>Verb</mat-label>
-              <input matInput [formControl]="aVerbCtrl">
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>Recovery Class</mat-label>
-              <mat-select [formControl]="aRecoveryClassCtrl">
-                <mat-option *ngFor="let v of recoveryClasses" [value]="v">{{ v }}</mat-option>
-              </mat-select>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>Stores Touched (JSON, confirm only)</mat-label>
-              <textarea matInput [formControl]="aStoresTouchedCtrl" rows="3" placeholder='["foodStore","mealStore"]'></textarea>
-            </mat-form-field>
-
-            <div class="form-row two-col">
-              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Command-Action Version</mat-label>
-                <input matInput [formControl]="aVersionCtrl">
-              </mat-form-field>
-              <div class="checkbox-col">
-                <mat-checkbox [formControl]="aIsEnabledCtrl">Enabled</mat-checkbox>
-                <span class="row-id-display">ID: {{ selectedAction.actionId }}</span>
-              </div>
-            </div>
-
-            <div class="action-row">
-              <button mat-flat-button class="save-btn" (click)="saveAction()"
-                      [disabled]="isSavingAction || !hasActionChanges()">
-                <mat-icon>check</mat-icon>
-                {{ isSavingAction ? 'Saving...' : 'Save' }}
-              </button>
-              <button mat-stroked-button color="warn" (click)="deleteAction()">Delete</button>
-            </div>
-          </div>
-
-          <div class="details-panel placeholder" *ngIf="!selectedAction">
-            <p>Select an action or create a new one</p>
-          </div>
-        </div>
-
-        <div *ngIf="filteredActions.length === 0 && !isLoadingActions && !selectedAction" class="empty-state">
-          <mat-icon>bolt</mat-icon>
-          <p>No actions. Click + to create one.</p>
-        </div>
-      </div>
-    </mat-tab>
-
-    <!-- ====================================================== -->
-    <!-- PHRASINGS                                               -->
-    <!-- ====================================================== -->
-    <mat-tab label="Phrasings">
-      <div class="sub-tab-content">
-
-        <!-- Filter / target picker bar -->
-        <div class="filter-bar">
-          <span class="filter-title">Filters</span>
-          <mat-form-field appearance="fill" class="picker-field">
-            <mat-label>Target</mat-label>
-            <mat-select [formControl]="phrasingTargetFilterCtrl" (selectionChange)="onPhrasingTargetFilterChange()">
-              <mat-option [value]="null">(all targets)</mat-option>
-              <mat-option *ngFor="let t of targets" [value]="t.targetId">
-                {{ t.widget }} · {{ t.label }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="fill" class="search-field">
-            <mat-label>Search phrase</mat-label>
-            <input matInput [formControl]="phrasingSearchControl" placeholder="text contains...">
-          </mat-form-field>
-          <button mat-flat-button class="apply-btn" (click)="loadPhrasings()" [disabled]="isLoadingPhrasings" matTooltip="Reload">
-            <mat-icon>refresh</mat-icon>
-          </button>
-        </div>
-
-        <!-- Bulk add panel -->
-        <div class="bulk-panel">
-          <div class="bulk-header">
-            <mat-icon>playlist_add</mat-icon>
-            <span>Bulk add phrasings</span>
-            <span class="bulk-count">{{ bulkPhraseCount }} phrase(s)</span>
-          </div>
-          <div class="bulk-controls">
-            <mat-form-field appearance="fill" class="picker-field">
-              <mat-label>Target *</mat-label>
-              <mat-select [formControl]="bulkTargetIdCtrl">
-                <mat-option *ngFor="let t of targets" [value]="t.targetId">
-                  {{ t.widget }} · {{ t.label }}
-                </mat-option>
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field appearance="fill" class="picker-field">
-              <mat-label>Action (optional)</mat-label>
-              <mat-select [formControl]="bulkActionIdCtrl">
-                <mat-option [value]="null">(none)</mat-option>
-                <mat-option *ngFor="let a of actions" [value]="a.actionId">
-                  {{ a.verb }}
-                </mat-option>
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field appearance="fill" class="small-field">
-              <mat-label>Source</mat-label>
-              <mat-select [formControl]="bulkSourceCtrl">
-                <mat-option *ngFor="let v of phrasingSources" [value]="v">{{ v }}</mat-option>
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field appearance="fill" class="small-field">
-              <mat-label>Version</mat-label>
-              <input matInput [formControl]="bulkVersionCtrl">
-            </mat-form-field>
-          </div>
-          <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-            <mat-label>Phrases (one per line)</mat-label>
-            <textarea matInput [formControl]="bulkPhrasesCtrl" rows="6"
-                      placeholder="set my goal weight to 180&#10;change goal weight&#10;update target weight"></textarea>
-          </mat-form-field>
-          <div class="action-row">
-            <button mat-flat-button class="save-btn" (click)="bulkAdd()"
-                    [disabled]="isBulkAdding || bulkPhraseCount === 0 || !bulkTargetIdCtrl.value">
-              <mat-icon>library_add</mat-icon>
-              {{ isBulkAdding ? 'Adding...' : 'Add All' }}
-            </button>
-          </div>
-        </div>
-
-        <div class="new-row">
-          <button mat-flat-button class="new-btn" (click)="newPhrasing()" matTooltip="Add single phrasing">
-            <mat-icon>add</mat-icon>
-          </button>
-        </div>
-
-        <div class="results-layout" *ngIf="filteredPhrasings.length > 0 || selectedPhrasing">
-          <div class="results-sidebar">
-            <div class="row-list">
-              <div *ngIf="isLoadingPhrasings" class="loading-row">
-                <mat-spinner diameter="24"></mat-spinner><span>Loading...</span>
-              </div>
-              <div *ngFor="let p of filteredPhrasings"
-                   class="row-item"
-                   [class.selected]="selectedPhrasing?.phrasingId === p.phrasingId"
-                   (click)="selectPhrasing(p)">
-                <div class="row-info">
-                  <span class="row-name">{{ truncate(p.phrase, 60) }}</span>
+                  <span class="row-name">{{ w.name || '(unnamed)' }}</span>
                   <span class="row-meta">
-                    {{ targetLabel(p.targetId) }}
-                    <span *ngIf="p.actionId"> · {{ actionLabel(p.actionId) }}</span>
-                    · {{ p.source }} · hits {{ p.hits }}
-                    <span *ngIf="!p.isEnabled" class="disabled-tag">disabled</span>
+                    {{ w.renderIntent }} · {{ w.commands.length }} mapping(s)
+                    <span *ngIf="!w.isEnabled" class="disabled-tag">disabled</span>
+                    <span *ngIf="!w.widgetId" class="disabled-tag new-tag">new</span>
                   </span>
                 </div>
-                <span class="row-id">#{{ p.phrasingId }}</span>
+                <span class="row-id" *ngIf="w.widgetId">#{{ w.widgetId }}</span>
               </div>
             </div>
           </div>
 
-          <div class="details-panel" *ngIf="selectedPhrasing">
+          <!-- Right: widget detail -->
+          <div class="details-panel" *ngIf="selectedWidget">
 
             <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>Phrase</mat-label>
-              <input matInput [formControl]="pPhraseCtrl">
+              <mat-label>Name</mat-label>
+              <input matInput [(ngModel)]="selectedWidget.name" name="w-name">
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>Target *</mat-label>
-              <mat-select [formControl]="pTargetIdCtrl">
-                <mat-option *ngFor="let t of targets" [value]="t.targetId">
-                  {{ t.widget }} · {{ t.label }}
-                </mat-option>
-              </mat-select>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>Action (optional)</mat-label>
-              <mat-select [formControl]="pActionIdCtrl">
-                <mat-option [value]="null">(none)</mat-option>
-                <mat-option *ngFor="let a of actions" [value]="a.actionId">{{ a.verb }}</mat-option>
-              </mat-select>
+              <mat-label>Description (routing scent)</mat-label>
+              <textarea matInput rows="2" [(ngModel)]="selectedWidget.description" name="w-desc"></textarea>
             </mat-form-field>
 
             <div class="form-row two-col">
               <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Source</mat-label>
-                <mat-select [formControl]="pSourceCtrl">
-                  <mat-option *ngFor="let v of phrasingSources" [value]="v">{{ v }}</mat-option>
+                <mat-label>Render Intent</mat-label>
+                <mat-select [(ngModel)]="selectedWidget.renderIntent" name="w-render">
+                  <mat-option *ngFor="let v of renderIntents" [value]="v">{{ v }}</mat-option>
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline" class="half-field" floatLabel="always">
-                <mat-label>Command-Action Version</mat-label>
-                <input matInput [formControl]="pVersionCtrl">
-              </mat-form-field>
+              <div class="checkbox-col">
+                <mat-checkbox [(ngModel)]="selectedWidget.isEnabled" name="w-enabled">Enabled</mat-checkbox>
+                <span class="row-id-display" *ngIf="selectedWidget.widgetId">ID: {{ selectedWidget.widgetId }}</span>
+              </div>
             </div>
 
-            <div class="checkbox-row">
-              <mat-checkbox [formControl]="pIsEnabledCtrl">Enabled</mat-checkbox>
-              <span class="row-id-display">ID: {{ selectedPhrasing.phrasingId }} · hits: {{ selectedPhrasing.hits }}</span>
+            <!-- Mapped Commands -->
+            <div class="section-header">
+              <mat-icon>link</mat-icon>
+              <span>Mapped Commands</span>
+              <span class="hint-text" *ngIf="commands.length === 0">
+                No commands in the global catalog yet — add some in the Commands tab.
+              </span>
             </div>
 
+            <div class="mapping-list">
+              <ng-container *ngFor="let cmd of commands">
+                <ng-container *ngTemplateOutlet="mappingRow; context: { cmd: cmd, mapping: mappingFor(cmd.commandId) }"></ng-container>
+              </ng-container>
+            </div>
+
+            <ng-template #mappingRow let-cmd="cmd" let-mapping="mapping">
+              <div class="mapping-row" [class.unmapped]="!mapping">
+                <div class="mapping-head">
+                  <mat-checkbox
+                    [checked]="!!mapping"
+                    (change)="toggleMapping(cmd.commandId, $event.checked)">
+                    <span class="mapping-name">{{ cmd.name }}</span>
+                    <span class="global-tag" *ngIf="!mapping">global</span>
+                    <span class="mapping-desc" *ngIf="cmd.description">— {{ truncate(cmd.description, 80) }}</span>
+                  </mat-checkbox>
+                </div>
+
+                <div class="mapping-fields" *ngIf="mapping">
+                  <div class="form-row two-col">
+                    <mat-form-field appearance="outline" class="half-field" floatLabel="always">
+                      <mat-label>Http Method</mat-label>
+                      <mat-select [(ngModel)]="mapping.httpMethod" name="m-method-{{cmd.commandId}}"
+                                  (selectionChange)="onMappingMethodChange(mapping)">
+                        <mat-option [value]="null">(none — surfacing)</mat-option>
+                        <mat-option *ngFor="let v of httpMethods" [value]="v">{{ v }}</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <div class="checkbox-col">
+                      <mat-checkbox [(ngModel)]="mapping.requiresConfirmation" name="m-conf-{{cmd.commandId}}">
+                        Requires Confirmation
+                      </mat-checkbox>
+                      <mat-checkbox [(ngModel)]="mapping.isEnabled" name="m-en-{{cmd.commandId}}">Enabled</mat-checkbox>
+                    </div>
+                  </div>
+
+                  <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+                    <mat-label>Api Endpoint</mat-label>
+                    <input matInput
+                           [(ngModel)]="mapping.apiEndpoint"
+                           name="m-ep-{{cmd.commandId}}"
+                           [disabled]="isSurfacing(mapping)"
+                           placeholder="/api/user/settings">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+                    <mat-label>Body Template (JSON)</mat-label>
+                    <textarea matInput rows="2"
+                              [(ngModel)]="mapping.bodyTemplate"
+                              name="m-body-{{cmd.commandId}}"
+                              [disabled]="isSurfacing(mapping)"
+                              placeholder='{"goalWeight":"{value}"}'></textarea>
+                  </mat-form-field>
+                </div>
+              </div>
+            </ng-template>
+
+            <!-- Slurp drop zone stub (disabled) -->
+            <div class="slurp-dropzone" aria-disabled="true">
+              <mat-icon>cloud_upload</mat-icon>
+              <span>Drop Flutter widget file to auto-map (coming soon)</span>
+            </div>
+
+            <!-- Actions -->
             <div class="action-row">
-              <button mat-flat-button class="save-btn" (click)="savePhrasing()"
-                      [disabled]="isSavingPhrasing || !hasPhrasingChanges()">
+              <button mat-flat-button class="save-btn" (click)="saveAllWidgets()"
+                      [disabled]="isSavingWidgets || !hasAnyWidgetChanges()"
+                      matTooltip="Saves the ENTIRE widget collection (whole-collection replace).">
                 <mat-icon>check</mat-icon>
-                {{ isSavingPhrasing ? 'Saving...' : 'Save' }}
+                {{ isSavingWidgets ? 'Saving...' : 'Save' }}
               </button>
-              <button mat-stroked-button color="warn" (click)="deletePhrasing()">Delete</button>
+              <button mat-stroked-button class="undo-btn" (click)="undoSelectedWidget()"
+                      [disabled]="!hasSelectedWidgetChanges()"
+                      matTooltip="Revert this widget's edits">
+                <mat-icon>close</mat-icon>
+              </button>
+              <button mat-stroked-button color="warn" (click)="deleteWidget()">Delete</button>
             </div>
           </div>
 
-          <div class="details-panel placeholder" *ngIf="!selectedPhrasing">
-            <p>Select a phrasing or create a new one</p>
+          <div class="details-panel placeholder" *ngIf="!selectedWidget">
+            <p>Select a widget or create a new one</p>
           </div>
         </div>
 
-        <div *ngIf="filteredPhrasings.length === 0 && !isLoadingPhrasings && !selectedPhrasing" class="empty-state">
-          <mat-icon>format_quote</mat-icon>
-          <p>No phrasings. Use the bulk panel above or click + to add one.</p>
+        <div *ngIf="widgets.length === 0 && !isLoadingWidgets && !selectedWidget" class="empty-state">
+          <mat-icon>widgets</mat-icon>
+          <p>No widgets yet. Click + to create one.</p>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- ===================================================================== -->
+    <!-- COMMANDS                                                               -->
+    <!-- ===================================================================== -->
+    <mat-tab label="Commands">
+      <div class="sub-tab-content">
+
+        <div class="filter-bar">
+          <span class="filter-title">Commands</span>
+          <span class="hint-text">{{ commands.length }} loaded</span>
+          <button mat-flat-button class="apply-btn" (click)="loadCommands()"
+                  [disabled]="isLoadingCommands" matTooltip="Reload">
+            <mat-icon>refresh</mat-icon>
+          </button>
+        </div>
+        <div class="new-row">
+          <button mat-flat-button class="new-btn" (click)="newCommand()" matTooltip="Add new command">
+            <mat-icon>add</mat-icon>
+          </button>
+        </div>
+
+        <div class="results-layout" *ngIf="commands.length > 0 || selectedCommand">
+          <div class="results-sidebar">
+            <div class="row-list">
+              <div *ngIf="isLoadingCommands" class="loading-row">
+                <mat-spinner diameter="24"></mat-spinner><span>Loading...</span>
+              </div>
+              <div *ngFor="let c of commands"
+                   class="row-item"
+                   [class.selected]="selectedCommand === c"
+                   (click)="selectCommand(c)">
+                <div class="row-info">
+                  <span class="row-name">{{ c.name || '(unnamed)' }}</span>
+                  <span class="row-meta">
+                    {{ truncate(c.description, 50) }}
+                    <span *ngIf="!c.isEnabled" class="disabled-tag">disabled</span>
+                    <span *ngIf="!c.commandId" class="disabled-tag new-tag">new</span>
+                  </span>
+                </div>
+                <span class="row-id" *ngIf="c.commandId">#{{ c.commandId }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="details-panel" *ngIf="selectedCommand">
+
+            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+              <mat-label>Name</mat-label>
+              <input matInput [(ngModel)]="selectedCommand.name" name="c-name">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+              <mat-label>Description</mat-label>
+              <textarea matInput rows="2" [(ngModel)]="selectedCommand.description" name="c-desc"></textarea>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
+              <mat-label>Verb Tokens (JSON array of synonyms)</mat-label>
+              <textarea matInput rows="3" [(ngModel)]="selectedCommand.verbTokens" name="c-verbs"
+                        placeholder='["bloom","open","get me"]'></textarea>
+            </mat-form-field>
+            <span class="hint-text">
+              Editing tokens affects every widget mapped to this command — mappings reference it by id, not by verb.
+            </span>
+
+            <div class="checkbox-row">
+              <mat-checkbox [(ngModel)]="selectedCommand.isEnabled" name="c-enabled">Enabled</mat-checkbox>
+              <span class="row-id-display" *ngIf="selectedCommand.commandId">ID: {{ selectedCommand.commandId }}</span>
+            </div>
+
+            <div class="action-row">
+              <button mat-flat-button class="save-btn" (click)="saveCommand()"
+                      [disabled]="isSavingCommand || !hasCommandChanges()">
+                <mat-icon>check</mat-icon>
+                {{ isSavingCommand ? 'Saving...' : 'Save' }}
+              </button>
+              <button mat-stroked-button color="warn" (click)="deleteCommand()">Delete</button>
+            </div>
+          </div>
+
+          <div class="details-panel placeholder" *ngIf="!selectedCommand">
+            <p>Select a command or create a new one</p>
+          </div>
+        </div>
+
+        <div *ngIf="commands.length === 0 && !isLoadingCommands && !selectedCommand" class="empty-state">
+          <mat-icon>terminal</mat-icon>
+          <p>No commands in the global catalog. Click + to create one.</p>
         </div>
       </div>
     </mat-tab>
