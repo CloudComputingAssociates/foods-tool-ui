@@ -345,8 +345,8 @@ export class CommandWidgetComponent implements OnInit, AfterViewInit {
       this.snackBar.open('Command name is required', 'Close', { duration: 4000 });
       return;
     }
-    // Validate verbTokens by attempting the display→JSON-array conversion.
-    if (this.verbTokensToServer(c.verbTokens) === '[]') {
+    // Validate verbTokens by attempting the display → array conversion.
+    if (this.verbTokensDisplayToArray(c.verbTokens).length === 0) {
       this.snackBar.open(
         'Enter at least one verb token (comma-separated, e.g. set, change, update).',
         'Close', { duration: 5000 });
@@ -413,59 +413,65 @@ export class CommandWidgetComponent implements OnInit, AfterViewInit {
     return JSON.parse(JSON.stringify(v));
   }
 
-  // Server stores Command.verbTokens as a JSON array string (e.g. '["set","change"]').
-  // UI edits a friendlier comma-separated list (e.g. 'set, change'). Convert at the
-  // boundary so what's in this.commands is always in display form and what we POST
-  // is always a valid JSON array string.
+  // Wire shape: server's Command.VerbTokens is json.RawMessage, which serializes
+  // as a REAL JSON array on both sides (e.g. "verbTokens": ["set","change"]).
+  // The TS Command.verbTokens field holds the comma-separated display string for
+  // the textarea. Convert at the boundary: incoming array → "set, change", and
+  // outgoing display → ["set","change"] (a real array, not a stringified one).
 
-  private verbTokensFromServer(raw: string | null | undefined): string {
-    if (!raw) return '';
-    const s = String(raw).trim();
-    if (!s) return '';
-    try {
-      const parsed = JSON.parse(s);
-      if (Array.isArray(parsed)) {
-        return parsed
-          .filter(x => typeof x === 'string')
-          .map(x => x.trim())
-          .filter(x => x.length > 0)
-          .join(', ');
-      }
-    } catch {
-      // not JSON — treat as already a comma list
+  private verbTokensFromServer(raw: any): string {
+    if (Array.isArray(raw)) {
+      return raw
+        .filter(x => typeof x === 'string')
+        .map(x => x.trim())
+        .filter(x => x.length > 0)
+        .join(', ');
     }
-    return s;
+    // Forgiving fallback if the server ever sends a string (e.g. legacy data).
+    if (typeof raw === 'string' && raw.trim()) {
+      const s = raw.trim();
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .filter(x => typeof x === 'string')
+            .map(x => x.trim())
+            .filter(x => x.length > 0)
+            .join(', ');
+        }
+      } catch { /* not JSON — treat as comma list */ }
+      return s;
+    }
+    return '';
   }
 
-  private verbTokensToServer(display: string | null | undefined): string {
-    if (!display) return '[]';
+  private verbTokensDisplayToArray(display: string | null | undefined): string[] {
+    if (!display) return [];
     const s = String(display).trim();
-    if (!s) return '[]';
+    if (!s) return [];
     // Accept a JSON array literal too, in case the user pasted one.
     if (s.startsWith('[')) {
       try {
         const parsed = JSON.parse(s);
         if (Array.isArray(parsed)) {
-          const tokens = parsed
+          return parsed
             .filter(x => typeof x === 'string')
             .map(x => x.trim())
             .filter(x => x.length > 0);
-          return JSON.stringify(tokens);
         }
-      } catch {
-        // fall through to comma path
-      }
+      } catch { /* fall through to comma path */ }
     }
-    const tokens = s.split(',').map(t => t.trim()).filter(t => t.length > 0);
-    return JSON.stringify(tokens);
+    return s.split(',').map(t => t.trim()).filter(t => t.length > 0);
   }
 
-  private convertCommandsFromServer(list: Command[]): Command[] {
+  private convertCommandsFromServer(list: any[]): Command[] {
     return list.map(c => ({ ...c, verbTokens: this.verbTokensFromServer(c.verbTokens) }));
   }
 
+  // Returns Command[] with verbTokens swapped to a real string[] for the wire.
+  // Cast through `any` because the typed model carries the display form.
   private convertCommandsToServer(list: Command[]): Command[] {
-    return list.map(c => ({ ...c, verbTokens: this.verbTokensToServer(c.verbTokens) }));
+    return list.map(c => ({ ...c, verbTokens: this.verbTokensDisplayToArray(c.verbTokens) as any }));
   }
 
   private errMsg(err: any): string {
