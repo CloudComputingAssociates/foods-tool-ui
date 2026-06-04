@@ -54,9 +54,9 @@
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="full-width-field" floatLabel="always">
-              <mat-label>Verb Tokens (JSON array of synonyms)</mat-label>
+              <mat-label>Verb Tokens (comma-separated synonyms)</mat-label>
               <textarea matInput rows="3" [(ngModel)]="c.verbTokens" name="c-verbs-{{c.commandId || 'new'}}"
-                        placeholder='["bloom","open","get me"]'></textarea>
+                        placeholder="set, change, update"></textarea>
             </mat-form-field>
             <span class="hint-text">
               Editing tokens affects every widget mapped to this command — mappings reference it by id, not by verb.

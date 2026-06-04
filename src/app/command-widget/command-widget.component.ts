@@ -293,7 +293,7 @@ export class CommandWidgetComponent implements OnInit, AfterViewInit {
     this.apiService.getCommands().subscribe({
       next: (rows: any) => {
         const list: Command[] = Array.isArray(rows) ? rows : (rows?.commands ?? rows?.data ?? []);
-        this.commands = list;
+        this.commands = this.convertCommandsFromServer(list);
         this.isLoadingCommands = false;
       },
       error: (err: HttpErrorResponse) => {
@@ -325,7 +325,7 @@ export class CommandWidgetComponent implements OnInit, AfterViewInit {
       commandId: 0,
       name: `newCommand_${Date.now().toString(36)}`,
       description: '',
-      verbTokens: '[]',
+      verbTokens: '', // display form — empty comma list; gets serialized to '[]' on save
       isEnabled: true
     };
     this.commands = [stub, ...this.commands];
@@ -345,25 +345,20 @@ export class CommandWidgetComponent implements OnInit, AfterViewInit {
       this.snackBar.open('Command name is required', 'Close', { duration: 4000 });
       return;
     }
-    const vt = (c.verbTokens || '').trim();
-    if (!vt) {
-      this.snackBar.open('Verb Tokens must be a JSON array (e.g. ["set","change"])', 'Close', { duration: 5000 });
-      return;
-    }
-    try {
-      const parsed = JSON.parse(vt);
-      if (!Array.isArray(parsed)) throw new Error('not array');
-    } catch {
-      this.snackBar.open('Verb Tokens must be a JSON array of strings', 'Close', { duration: 5000 });
+    // Validate verbTokens by attempting the display→JSON-array conversion.
+    if (this.verbTokensToServer(c.verbTokens) === '[]') {
+      this.snackBar.open(
+        'Enter at least one verb token (comma-separated, e.g. set, change, update).',
+        'Close', { duration: 5000 });
       return;
     }
 
     this.isSavingCommand = true;
     const previousKey = c.commandId > 0 ? `id:${c.commandId}` : `name:${c.name}`;
-    this.apiService.saveAllCommands(this.commands).subscribe({
+    this.apiService.saveAllCommands(this.convertCommandsToServer(this.commands)).subscribe({
       next: (rows: any) => {
-        const list: Command[] = Array.isArray(rows) ? rows : (rows?.commands ?? rows?.data ?? []);
-        this.commands = list;
+        const raw: Command[] = Array.isArray(rows) ? rows : (rows?.commands ?? rows?.data ?? []);
+        this.commands = this.convertCommandsFromServer(raw);
         const restored = this.commands.find(x =>
           (x.commandId > 0 ? `id:${x.commandId}` : `name:${x.name}`) === previousKey
         ) ?? this.commands[0] ?? null;
@@ -394,10 +389,10 @@ export class CommandWidgetComponent implements OnInit, AfterViewInit {
       return;
     }
     this.isSavingCommand = true;
-    this.apiService.saveAllCommands(this.commands).subscribe({
+    this.apiService.saveAllCommands(this.convertCommandsToServer(this.commands)).subscribe({
       next: (rows: any) => {
-        const list: Command[] = Array.isArray(rows) ? rows : (rows?.commands ?? rows?.data ?? []);
-        this.commands = list;
+        const raw: Command[] = Array.isArray(rows) ? rows : (rows?.commands ?? rows?.data ?? []);
+        this.commands = this.convertCommandsFromServer(raw);
         this.selectedCommand = null;
         this.originalSelectedCommand = null;
         this.isSavingCommand = false;
@@ -416,6 +411,61 @@ export class CommandWidgetComponent implements OnInit, AfterViewInit {
 
   private deepClone<T>(v: T): T {
     return JSON.parse(JSON.stringify(v));
+  }
+
+  // Server stores Command.verbTokens as a JSON array string (e.g. '["set","change"]').
+  // UI edits a friendlier comma-separated list (e.g. 'set, change'). Convert at the
+  // boundary so what's in this.commands is always in display form and what we POST
+  // is always a valid JSON array string.
+
+  private verbTokensFromServer(raw: string | null | undefined): string {
+    if (!raw) return '';
+    const s = String(raw).trim();
+    if (!s) return '';
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter(x => typeof x === 'string')
+          .map(x => x.trim())
+          .filter(x => x.length > 0)
+          .join(', ');
+      }
+    } catch {
+      // not JSON — treat as already a comma list
+    }
+    return s;
+  }
+
+  private verbTokensToServer(display: string | null | undefined): string {
+    if (!display) return '[]';
+    const s = String(display).trim();
+    if (!s) return '[]';
+    // Accept a JSON array literal too, in case the user pasted one.
+    if (s.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) {
+          const tokens = parsed
+            .filter(x => typeof x === 'string')
+            .map(x => x.trim())
+            .filter(x => x.length > 0);
+          return JSON.stringify(tokens);
+        }
+      } catch {
+        // fall through to comma path
+      }
+    }
+    const tokens = s.split(',').map(t => t.trim()).filter(t => t.length > 0);
+    return JSON.stringify(tokens);
+  }
+
+  private convertCommandsFromServer(list: Command[]): Command[] {
+    return list.map(c => ({ ...c, verbTokens: this.verbTokensFromServer(c.verbTokens) }));
+  }
+
+  private convertCommandsToServer(list: Command[]): Command[] {
+    return list.map(c => ({ ...c, verbTokens: this.verbTokensToServer(c.verbTokens) }));
   }
 
   private errMsg(err: any): string {
