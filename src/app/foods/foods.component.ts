@@ -36,7 +36,8 @@ export class FoodsComponent implements OnInit {
 
   searchControl = new FormControl('');
   limitControl = new FormControl(50);  // NEW: Default to 50 results
-  yehApprovedControl = new FormControl(false);  // YEH Approved checkbox
+  listFilterControl = new FormControl<string>('all');  // 'all' or a list handle
+  availableLists: { name: string; description: string; toolTip?: string }[] = [];
   foods: Food[] = [];  // Array of all search results (typed as Food[])
   selectedFood: Food | null = null;  // RENAMED from currentFood
   selectedIndex: number = 0;  // Track selected item for detail view
@@ -62,7 +63,6 @@ export class FoodsComponent implements OnInit {
   shortDescriptionControl = new FormControl<string | null>(null);
   glycemicIndexControl = new FormControl<number | null>(null);
   glycemicLoadControl = new FormControl<number | null>(null);
-  yehApprovedMetadataControl = new FormControl<boolean>(false);
   servingUnitControl = new FormControl<string | null>(null);
   servingGramsPerUnitControl = new FormControl<number | null>(null);
   isSavingMetadata = false;
@@ -72,12 +72,15 @@ export class FoodsComponent implements OnInit {
 
   readonly servingUnitOptions = ['whole', 'cup', 'tbsp', 'tsp', 'oz', 'lbs', 'g'];
 
+  // List assignment state (detail panel)
+  foodLists: { name: string; description: string; toolTip?: string; assigned: boolean }[] = [];
+  private originalAssignedLists = new Set<string>();  // list handles assigned at load
+
   // Track original values to detect changes
-  private originalMetadata: { shortDescription: string | null; glycemicIndex: number | null; glycemicLoad: number | null; yehApproved: boolean; servingUnit: string | null; servingGramsPerUnit: number | null } = {
+  private originalMetadata: { shortDescription: string | null; glycemicIndex: number | null; glycemicLoad: number | null; servingUnit: string | null; servingGramsPerUnit: number | null } = {
     shortDescription: null,
     glycemicIndex: null,
     glycemicLoad: null,
-    yehApproved: false,
     servingUnit: null,
     servingGramsPerUnit: null
   };
@@ -89,32 +92,26 @@ export class FoodsComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Remove automatic API calls on typing
+    this.foodsService.getLists().subscribe({
+      next: (res) => { this.availableLists = res?.lists ?? []; },
+      error: () => { this.availableLists = []; }
+    });
   }
 
   performSearch() {
     const query = this.searchControl.value?.trim() || '';
-    const isYehApproved = this.yehApprovedControl.value;
+    const selectedList = this.listFilterControl.value || 'all';
     const limit = this.limitControl.value ?? 50;
 
-    // For regular search, require at least 2 characters
-    // For YEH Approved, allow empty query to get all approved foods
-    if (!isYehApproved && query.length < 2) {
-      return;
+    let searchObservable;
+    if (selectedList !== 'all') {
+      searchObservable = this.foodsService.getListItems(selectedList);
+    } else {
+      if (query.length < 2) { return; }
+      searchObservable = this.foodsService.searchFoods(query, limit);
     }
 
     this.isLoading = true;
-
-    // Choose API based on YEH Approved checkbox
-    // YEH Approved uses /api/foods/search/all/yehapproved endpoint
-    // Regular search uses /api/foods/search?query=...
-    let searchObservable;
-    if (isYehApproved) {
-      // YEH Approved: get all approved foods, then filter client-side if query provided
-      searchObservable = this.foodsService.searchYehApprovedFoods(limit);
-    } else {
-      searchObservable = this.foodsService.searchFoods(query, limit);
-    }
 
     searchObservable.subscribe({
       next: (results) => {
@@ -130,8 +127,8 @@ export class FoodsComponent implements OnInit {
           foodsArray = [results];
         }
 
-        // If YEH Approved is checked and there's a query, filter client-side
-        if (isYehApproved && query) {
+        // When a specific list is selected and a query is provided, filter client-side
+        if (selectedList !== 'all' && query) {
           const lowerQuery = query.toLowerCase();
           foodsArray = foodsArray.filter((food: Food) =>
             food.description?.toLowerCase().includes(lowerQuery)
@@ -188,11 +185,6 @@ export class FoodsComponent implements OnInit {
   // Set MAX limit
   setMaxLimit(): void {
     this.limitControl.setValue(this.MAX_LIMIT);
-  }
-
-  // Handle YEH Approved checkbox change - trigger search if checked with empty query
-  onYehApprovedChange(): void {
-    // Optional: auto-search when checkbox is checked
   }
 
   // Predefined category display order (always shown, even if empty)
@@ -256,7 +248,6 @@ export class FoodsComponent implements OnInit {
     this.shortDescriptionControl.setValue(food.shortDescription ?? null);
     this.glycemicIndexControl.setValue(food.glycemicIndex ?? null);
     this.glycemicLoadControl.setValue(food.glycemicLoad ?? null);
-    this.yehApprovedMetadataControl.setValue(food.yehApproved ?? false);
     this.servingUnitControl.setValue(food.servingUnit ?? null);
     this.servingGramsPerUnitControl.setValue(food.servingGramsPerUnit ?? null);
 
@@ -265,10 +256,11 @@ export class FoodsComponent implements OnInit {
       shortDescription: food.shortDescription ?? null,
       glycemicIndex: food.glycemicIndex ?? null,
       glycemicLoad: food.glycemicLoad ?? null,
-      yehApproved: food.yehApproved ?? false,
       servingUnit: food.servingUnit ?? null,
       servingGramsPerUnit: food.servingGramsPerUnit ?? null
     };
+
+    this.loadFoodLists(food.id);
   }
 
   // Clear metadata fields when no food selected
@@ -276,10 +268,39 @@ export class FoodsComponent implements OnInit {
     this.shortDescriptionControl.setValue(null);
     this.glycemicIndexControl.setValue(null);
     this.glycemicLoadControl.setValue(null);
-    this.yehApprovedMetadataControl.setValue(false);
     this.servingUnitControl.setValue(null);
     this.servingGramsPerUnitControl.setValue(null);
-    this.originalMetadata = { shortDescription: null, glycemicIndex: null, glycemicLoad: null, yehApproved: false, servingUnit: null, servingGramsPerUnit: null };
+    this.originalMetadata = { shortDescription: null, glycemicIndex: null, glycemicLoad: null, servingUnit: null, servingGramsPerUnit: null };
+    this.foodLists = [];
+    this.originalAssignedLists.clear();
+  }
+
+  private loadFoodLists(foodId: number | undefined): void {
+    if (foodId == null) { this.foodLists = []; this.originalAssignedLists.clear(); return; }
+    this.foodsService.getLists(foodId, 'usda').subscribe({
+      next: (res) => {
+        this.foodLists = res?.lists ?? [];
+        this.originalAssignedLists = new Set(
+          this.foodLists.filter(l => l.assigned).map(l => l.name)
+        );
+      },
+      error: () => { this.foodLists = []; this.originalAssignedLists.clear(); }
+    });
+  }
+
+  // Local toggle only — nothing persists until Save.
+  toggleFoodList(list: { assigned: boolean }, checked: boolean): void {
+    list.assigned = checked;
+  }
+
+  // True when the current ticks differ from the snapshot taken at load.
+  private hasListAssignmentChanges(): boolean {
+    const current = new Set(this.foodLists.filter(l => l.assigned).map(l => l.name));
+    if (current.size !== this.originalAssignedLists.size) { return true; }
+    for (const name of current) {
+      if (!this.originalAssignedLists.has(name)) { return true; }
+    }
+    return false;
   }
 
   // Check if metadata has been modified
@@ -287,7 +308,6 @@ export class FoodsComponent implements OnInit {
     const currentShortDesc = this.shortDescriptionControl.value;
     const currentGI = this.glycemicIndexControl.value;
     const currentLoad = this.glycemicLoadControl.value;
-    const currentYehApproved = this.yehApprovedMetadataControl.value;
 
     const currentServingUnit = this.servingUnitControl.value;
     const currentGramsPerUnit = this.servingGramsPerUnitControl.value;
@@ -295,9 +315,9 @@ export class FoodsComponent implements OnInit {
     return currentShortDesc !== this.originalMetadata.shortDescription ||
            currentGI !== this.originalMetadata.glycemicIndex ||
            currentLoad !== this.originalMetadata.glycemicLoad ||
-           currentYehApproved !== this.originalMetadata.yehApproved ||
            currentServingUnit !== this.originalMetadata.servingUnit ||
-           currentGramsPerUnit !== this.originalMetadata.servingGramsPerUnit;
+           currentGramsPerUnit !== this.originalMetadata.servingGramsPerUnit ||
+           this.hasListAssignmentChanges();
   }
 
   // Save metadata to backend, then upload any staged images
@@ -315,7 +335,6 @@ export class FoodsComponent implements OnInit {
     const currentShortDesc = this.shortDescriptionControl.value;
     const currentGI = this.glycemicIndexControl.value;
     const currentLoad = this.glycemicLoadControl.value;
-    const currentYehApproved = this.yehApprovedMetadataControl.value;
 
     if (currentShortDesc !== this.originalMetadata.shortDescription) {
       // Empty string means set to NULL
@@ -327,9 +346,6 @@ export class FoodsComponent implements OnInit {
     if (currentLoad !== this.originalMetadata.glycemicLoad) {
       update.glycemicLoad = currentLoad;
     }
-    if (currentYehApproved !== this.originalMetadata.yehApproved) {
-      update.yehApproved = currentYehApproved ?? false;
-    }
     const currentServingUnit = this.servingUnitControl.value;
     const currentGramsPerUnit = this.servingGramsPerUnitControl.value;
     if (currentServingUnit !== this.originalMetadata.servingUnit) {
@@ -340,9 +356,10 @@ export class FoodsComponent implements OnInit {
     }
 
     const hasMetadataChanges = Object.keys(update).length > 0;
+    const hasListChanges = this.hasListAssignmentChanges();
 
     // Check if there's anything to do at all
-    if (!hasMetadataChanges && !hasImages) {
+    if (!hasMetadataChanges && !hasListChanges && !hasImages) {
       this.snackBar.open('No changes to save', 'Close', { duration: 3000 });
       return;
     }
@@ -363,10 +380,29 @@ export class FoodsComponent implements OnInit {
             shortDescription: updatedFood.shortDescription ?? null,
             glycemicIndex: updatedFood.glycemicIndex ?? null,
             glycemicLoad: updatedFood.glycemicLoad ?? null,
-            yehApproved: updatedFood.yehApproved ?? false,
             servingUnit: updatedFood.servingUnit ?? null,
             servingGramsPerUnit: updatedFood.servingGramsPerUnit ?? null
           };
+        }
+      }
+
+      // Apply list assignment changes (adds + removes) against the snapshot.
+      const foodId = this.selectedFood?.id;
+      if (foodId != null && hasListChanges) {
+        const adds = this.foodLists
+          .filter(l => l.assigned && !this.originalAssignedLists.has(l.name))
+          .map(l => this.foodsService.addFoodToList(l.name, foodId, 'usda').toPromise());
+        const removes = this.foodLists
+          .filter(l => !l.assigned && this.originalAssignedLists.has(l.name))
+          .map(l => this.foodsService.removeFoodFromList(l.name, foodId, 'usda').toPromise());
+        try {
+          await Promise.all([...adds, ...removes]);
+          this.originalAssignedLists = new Set(
+            this.foodLists.filter(l => l.assigned).map(l => l.name)
+          );
+        } catch {
+          this.loadFoodLists(foodId);
+          this.snackBar.open('Some list changes failed to save', 'Close', { duration: 5000 });
         }
       }
 

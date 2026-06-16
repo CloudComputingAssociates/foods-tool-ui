@@ -73,6 +73,37 @@ export class RegiApiService {
   }
 
   // ========================================
+  // FOOD LISTS (curated)
+  // ========================================
+
+  // All lists. Pass foodId to get an assigned flag per list (for the detail panel).
+  getLists(foodId?: number, foodSource: string = 'usda'): Observable<any> {
+    let url = `${this.baseUrl}/lists`;
+    if (foodId != null) {
+      url += `?foodId=${foodId}&foodSource=${foodSource}`;
+    }
+    return this.http.get<any>(url);
+  }
+
+  // Items in a list (hydrated foods). Same shape as searchYehApprovedFoods.
+  getListItems(name: string): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/lists/${encodeURIComponent(name)}/items`);
+  }
+
+  addFoodToList(name: string, foodId: number, foodSource: string = 'usda'): Observable<any> {
+    return this.http.post<any>(
+      `${this.baseUrl}/lists/${encodeURIComponent(name)}/items`,
+      { foodId, foodSource }
+    );
+  }
+
+  removeFoodFromList(name: string, foodId: number, foodSource: string = 'usda'): Observable<any> {
+    return this.http.delete<any>(
+      `${this.baseUrl}/lists/${encodeURIComponent(name)}/items/${foodId}?source=${foodSource}`
+    );
+  }
+
+  // ========================================
   // FATSECRET COMPARE / OVERWRITE
   // ========================================
 

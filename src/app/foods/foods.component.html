@@ -24,7 +24,15 @@
              min="1">
     </mat-form-field>
     <button mat-stroked-button class="max-btn" (click)="setMaxLimit()">Max</button>
-    <mat-checkbox [formControl]="yehApprovedControl" (change)="onYehApprovedChange()">YEH Approved</mat-checkbox>
+    <mat-form-field appearance="fill" class="list-filter-field">
+      <mat-label>List</mat-label>
+      <mat-select [formControl]="listFilterControl">
+        <mat-option value="all">All Foods</mat-option>
+        <mat-option *ngFor="let l of availableLists"
+                    [value]="l.name"
+                    [matTooltip]="l.toolTip || ''">{{ l.description }}</mat-option>
+      </mat-select>
+    </mat-form-field>
     <button mat-flat-button class="apply-btn" (click)="performSearch()">
       <mat-icon>keyboard_return</mat-icon>
     </button>
@@ -118,9 +126,15 @@
                   {{isLoadingCompare ? 'Loading...' : 'FatSecret'}}
                 </button>
               </div>
-              <!-- Row 2: YEH Approved checkbox -->
-              <div class="yeh-approved-metadata-row">
-                <mat-checkbox [formControl]="yehApprovedMetadataControl">YEH Approved Food</mat-checkbox>
+              <!-- Row 2: List assignment (staged; commits on Save) -->
+              <div class="lists-assignment-row">
+                <span class="lists-label">Lists:</span>
+                <mat-checkbox *ngFor="let l of foodLists"
+                              [checked]="l.assigned"
+                              (change)="toggleFoodList(l, $event.checked)"
+                              [matTooltip]="l.toolTip || ''">
+                  {{ l.description }}
+                </mat-checkbox>
               </div>
               <!-- Row 3: Short Description (full width) -->
               <div class="short-desc-row">

@@ -49,6 +49,8 @@
     }
   }
 
+  .list-filter-field { width: 180px; flex-shrink: 0; }
+
   .max-btn {
     height: 36px;
     min-width: 40px;
@@ -395,14 +397,16 @@
         }
       }
 
-      // YEH Approved checkbox row (between metadata and short description)
-      .yeh-approved-metadata-row {
+      .lists-assignment-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
         margin-bottom: 12px;
         padding-left: 4px;
 
-        mat-checkbox {
-          font-size: 14px;
-        }
+        .lists-label { font-size: 14px; font-weight: 500; }
+        mat-checkbox { font-size: 14px; }
       }
 
       // Short description row (full width below metadata row)
