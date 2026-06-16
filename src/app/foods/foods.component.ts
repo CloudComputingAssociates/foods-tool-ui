@@ -127,6 +127,10 @@ export class FoodsComponent implements OnInit {
           foodsArray = [results];
         }
 
+        // List-items endpoint returns `foodId`; regular search returns `id`.
+        // Normalize so the rest of the component can always read `food.id`.
+        foodsArray = foodsArray.map((f: any) => ({ ...f, id: f.id ?? f.foodId }));
+
         // When a specific list is selected and a query is provided, filter client-side
         if (selectedList !== 'all' && query) {
           const lowerQuery = query.toLowerCase();
