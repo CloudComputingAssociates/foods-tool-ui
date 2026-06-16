@@ -29,8 +29,7 @@
       <mat-select [formControl]="listFilterControl">
         <mat-option value="all">All Foods</mat-option>
         <mat-option *ngFor="let l of availableLists"
-                    [value]="l.name"
-                    [matTooltip]="l.toolTip || ''">{{ l.description }}</mat-option>
+                    [value]="l.name">{{ l.description }}</mat-option>
       </mat-select>
     </mat-form-field>
     <button mat-flat-button class="apply-btn" (click)="performSearch()">
@@ -129,8 +128,7 @@
                 <span class="lists-label">Lists:</span>
                 <mat-checkbox *ngFor="let l of foodLists"
                               [checked]="l.assigned"
-                              (change)="toggleFoodList(l, $event.checked)"
-                              [matTooltip]="l.toolTip || ''">
+                              (change)="toggleFoodList(l, $event.checked)">
                   {{ l.description }}
                 </mat-checkbox>
               </div>
