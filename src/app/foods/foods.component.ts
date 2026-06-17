@@ -320,15 +320,16 @@ export class FoodsComponent implements OnInit {
     this.servingGramsPerUnitControl.setValue(food.servingGramsPerUnit ?? null);
 
     // Prefer the persisted ServingSize; fall back to derived servingSizeG/gramsPerUnit
-    // for older rows that haven't been edited yet.
+    // for older rows that haven't been edited yet. Round to whole units — the spinner
+    // is integer-stepped and 1.01-style backfill noise just confuses the user.
     let initialSize: number | null = null;
     if (typeof food.servingSize === 'number') {
-      initialSize = food.servingSize;
+      initialSize = Math.round(food.servingSize);
     } else {
       const totalG = food.nutritionFacts?.servingSizeG;
       const gpu = food.servingGramsPerUnit;
       if (totalG && gpu && gpu > 0) {
-        initialSize = Math.round((totalG / gpu) * 100) / 100;
+        initialSize = Math.round(totalG / gpu);
       }
     }
     this.servingSizeControl.setValue(initialSize);
