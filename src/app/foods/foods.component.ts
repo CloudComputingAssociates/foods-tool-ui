@@ -155,8 +155,37 @@ export class FoodsComponent implements OnInit {
         }
 
         // List-items endpoint returns `foodId`; regular search returns `id`.
-        // Normalize so the rest of the component can always read `food.id`.
-        foodsArray = foodsArray.map((f: any) => ({ ...f, id: f.id ?? f.foodId }));
+        // It also returns a FLAT shape (calories/proteinG on the row itself) while
+        // the search endpoint returns nested nutritionFacts. Normalize both.
+        foodsArray = foodsArray.map((f: any) => {
+          const normalized: any = { ...f, id: f.id ?? f.foodId };
+          if (!normalized.nutritionFacts && (
+              f.calories != null || f.proteinG != null || f.totalFatG != null ||
+              f.totalCarbohydrateG != null || f.servingSizeG != null)) {
+            normalized.nutritionFacts = {
+              foodName: f.description ?? '',
+              servingSizeHousehold: f.servingSizeHousehold ?? null,
+              servingSizeG: f.servingSizeG ?? null,
+              servingsPerContainer: f.servingsPerContainer ?? null,
+              calories: f.calories,
+              proteinG: f.proteinG,
+              totalFatG: f.totalFatG,
+              saturatedFatG: f.saturatedFatG,
+              transFatG: f.transFatG,
+              cholesterolMG: f.cholesterolMG,
+              sodiumMG: f.sodiumMG,
+              totalCarbohydrateG: f.totalCarbohydrateG,
+              dietaryFiberG: f.dietaryFiberG,
+              totalSugarsG: f.totalSugarsG,
+              addedSugarsG: f.addedSugarsG,
+              vitaminDMcg: f.vitaminDMcg,
+              calciumMG: f.calciumMG,
+              ironMG: f.ironMG,
+              potassiumMG: f.potassiumMG,
+            };
+          }
+          return normalized;
+        });
 
         // When a specific list is selected and a query is provided, filter client-side
         if (selectedList !== 'all' && query) {
