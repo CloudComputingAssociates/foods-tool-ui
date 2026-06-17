@@ -35,12 +35,13 @@ export class FoodsComponent implements OnInit {
   @ViewChild(ImageUploadComponent) imageUploadComponent!: ImageUploadComponent;
 
   searchControl = new FormControl('');
-  limitControl = new FormControl(50);  // NEW: Default to 50 results
-  listFilterControl = new FormControl<string>('all');  // 'all' or a list handle
+  limitControl = new FormControl(300);  // Default to 300 results (was 50)
+  listFilterControl = new FormControl<string>('regi-approved');  // Default to Regi Approved list
   availableLists: { name: string; description: string; toolTip?: string }[] = [];
   foods: Food[] = [];  // Array of all search results (typed as Food[])
   selectedFood: Food | null = null;  // RENAMED from currentFood
   selectedIndex: number = 0;  // Track selected item for detail view
+  resultCount: number | null = null;  // Post-filter count shown on apply button
 
   // NEW: Multi-select state - tracks which foods are selected
   selectedFoodIds: Set<number> = new Set<number>();  // Uses Set for O(1) lookup
@@ -51,7 +52,15 @@ export class FoodsComponent implements OnInit {
   isLoading = false;
   displayedColumns: string[] = ['label', 'value', 'unit'];
   showingAllNutrients = false;
-  showPerServing = true;  // Toggle for per-serving vs per-100g (default: per serving, sticky)
+  // Display is always per-serving; 100g is an internal DB normalization detail.
+  showPerServing = true;
+
+  // Grams per unit for fixed weight units. Editable units (whole/cup/tbsp/tsp) are user-entered.
+  private readonly WEIGHT_UNIT_GRAMS: { [key: string]: number } = {
+    g: 1,
+    oz: 28.3495,
+    lbs: 453.592,
+  };
 
   // Cached nutrient data for the table (recalculated when food or mode changes)
   nutrientTableData: SimplifiedNutrient[] = [];
@@ -63,6 +72,7 @@ export class FoodsComponent implements OnInit {
   shortDescriptionControl = new FormControl<string | null>(null);
   glycemicIndexControl = new FormControl<number | null>(null);
   glycemicLoadControl = new FormControl<number | null>(null);
+  servingSizeControl = new FormControl<number | null>(null);
   servingUnitControl = new FormControl<string | null>(null);
   servingGramsPerUnitControl = new FormControl<number | null>(null);
   isSavingMetadata = false;
@@ -77,10 +87,11 @@ export class FoodsComponent implements OnInit {
   private originalAssignedLists = new Set<string>();  // list handles assigned at load
 
   // Track original values to detect changes
-  private originalMetadata: { shortDescription: string | null; glycemicIndex: number | null; glycemicLoad: number | null; servingUnit: string | null; servingGramsPerUnit: number | null } = {
+  private originalMetadata: { shortDescription: string | null; glycemicIndex: number | null; glycemicLoad: number | null; servingSize: number | null; servingUnit: string | null; servingGramsPerUnit: number | null } = {
     shortDescription: null,
     glycemicIndex: null,
     glycemicLoad: null,
+    servingSize: null,
     servingUnit: null,
     servingGramsPerUnit: null
   };
@@ -96,12 +107,28 @@ export class FoodsComponent implements OnInit {
       next: (res) => { this.availableLists = res?.lists ?? []; },
       error: () => { this.availableLists = []; }
     });
+
+    // Auto-fill GramsPerUnit when ServingUnit becomes a fixed-weight unit (g/oz/lbs).
+    // Non-weight units (whole/cup/tbsp/tsp) keep whatever value is there for editing.
+    this.servingUnitControl.valueChanges.subscribe(unit => {
+      if (unit && this.WEIGHT_UNIT_GRAMS[unit] !== undefined) {
+        this.servingGramsPerUnitControl.setValue(this.WEIGHT_UNIT_GRAMS[unit]);
+      }
+    });
+
+    // Recompute nutrient table when any serving input changes.
+    this.servingSizeControl.valueChanges.subscribe(() => this.updateNutrientTableData());
+    this.servingGramsPerUnitControl.valueChanges.subscribe(() => this.updateNutrientTableData());
+  }
+
+  isWeightUnit(unit: string | null): boolean {
+    return !!unit && this.WEIGHT_UNIT_GRAMS[unit] !== undefined;
   }
 
   performSearch() {
     const query = this.searchControl.value?.trim() || '';
     const selectedList = this.listFilterControl.value || 'all';
-    const limit = this.limitControl.value ?? 50;
+    const limit = this.limitControl.value ?? 300;
 
     let searchObservable;
     if (selectedList !== 'all') {
@@ -139,14 +166,20 @@ export class FoodsComponent implements OnInit {
           );
         }
 
+        // Cap list results to the Limit value so the "List + Limit" combo behaves
+        // the same as "search + Limit": Limit always means max rows shown.
+        if (selectedList !== 'all' && limit && foodsArray.length > limit) {
+          foodsArray = foodsArray.slice(0, limit);
+        }
+
         this.foods = foodsArray;
         this.buildGroupedFoods();
         console.log('foods array:', this.foods);
         console.log('foods.length:', this.foods.length);
 
-        // Update Result Count to match returned/filtered count
+        // Track post-filter count on apply button; Limit field is not overwritten.
         const returnedCount = this.foods.length;
-        this.limitControl.setValue(returnedCount);
+        this.resultCount = returnedCount;
 
         // Show snackbar with return count
         const message = returnedCount === 0
@@ -181,14 +214,15 @@ export class FoodsComponent implements OnInit {
         this.isLoading = false;
         this.foods = [];
         this.selectedFood = null;
+        this.resultCount = null;
         this.handleError(error, 'Failed to search foods');
       }
     });
   }
 
-  // Set MAX limit
-  setMaxLimit(): void {
-    this.limitControl.setValue(this.MAX_LIMIT);
+  // Clear the search field
+  clearSearch(): void {
+    this.searchControl.setValue('');
   }
 
   // Predefined category display order (always shown, even if empty)
@@ -252,14 +286,30 @@ export class FoodsComponent implements OnInit {
     this.shortDescriptionControl.setValue(food.shortDescription ?? null);
     this.glycemicIndexControl.setValue(food.glycemicIndex ?? null);
     this.glycemicLoadControl.setValue(food.glycemicLoad ?? null);
-    this.servingUnitControl.setValue(food.servingUnit ?? null);
+    // emitEvent:false so we don't trigger the weight-unit auto-fill on load.
+    this.servingUnitControl.setValue(food.servingUnit ?? null, { emitEvent: false });
     this.servingGramsPerUnitControl.setValue(food.servingGramsPerUnit ?? null);
+
+    // Prefer the persisted ServingSize; fall back to derived servingSizeG/gramsPerUnit
+    // for older rows that haven't been edited yet.
+    let initialSize: number | null = null;
+    if (typeof food.servingSize === 'number') {
+      initialSize = food.servingSize;
+    } else {
+      const totalG = food.nutritionFacts?.servingSizeG;
+      const gpu = food.servingGramsPerUnit;
+      if (totalG && gpu && gpu > 0) {
+        initialSize = Math.round((totalG / gpu) * 100) / 100;
+      }
+    }
+    this.servingSizeControl.setValue(initialSize);
 
     // Store original values for change detection
     this.originalMetadata = {
       shortDescription: food.shortDescription ?? null,
       glycemicIndex: food.glycemicIndex ?? null,
       glycemicLoad: food.glycemicLoad ?? null,
+      servingSize: initialSize,
       servingUnit: food.servingUnit ?? null,
       servingGramsPerUnit: food.servingGramsPerUnit ?? null
     };
@@ -272,9 +322,10 @@ export class FoodsComponent implements OnInit {
     this.shortDescriptionControl.setValue(null);
     this.glycemicIndexControl.setValue(null);
     this.glycemicLoadControl.setValue(null);
-    this.servingUnitControl.setValue(null);
+    this.servingSizeControl.setValue(null);
+    this.servingUnitControl.setValue(null, { emitEvent: false });
     this.servingGramsPerUnitControl.setValue(null);
-    this.originalMetadata = { shortDescription: null, glycemicIndex: null, glycemicLoad: null, servingUnit: null, servingGramsPerUnit: null };
+    this.originalMetadata = { shortDescription: null, glycemicIndex: null, glycemicLoad: null, servingSize: null, servingUnit: null, servingGramsPerUnit: null };
     this.foodLists = [];
     this.originalAssignedLists.clear();
   }
@@ -313,12 +364,14 @@ export class FoodsComponent implements OnInit {
     const currentGI = this.glycemicIndexControl.value;
     const currentLoad = this.glycemicLoadControl.value;
 
+    const currentServingSize = this.servingSizeControl.value;
     const currentServingUnit = this.servingUnitControl.value;
     const currentGramsPerUnit = this.servingGramsPerUnitControl.value;
 
     return currentShortDesc !== this.originalMetadata.shortDescription ||
            currentGI !== this.originalMetadata.glycemicIndex ||
            currentLoad !== this.originalMetadata.glycemicLoad ||
+           currentServingSize !== this.originalMetadata.servingSize ||
            currentServingUnit !== this.originalMetadata.servingUnit ||
            currentGramsPerUnit !== this.originalMetadata.servingGramsPerUnit ||
            this.hasListAssignmentChanges();
@@ -350,8 +403,12 @@ export class FoodsComponent implements OnInit {
     if (currentLoad !== this.originalMetadata.glycemicLoad) {
       update.glycemicLoad = currentLoad;
     }
+    const currentServingSize = this.servingSizeControl.value;
     const currentServingUnit = this.servingUnitControl.value;
     const currentGramsPerUnit = this.servingGramsPerUnitControl.value;
+    if (currentServingSize !== this.originalMetadata.servingSize) {
+      update.servingSize = currentServingSize;
+    }
     if (currentServingUnit !== this.originalMetadata.servingUnit) {
       update.servingUnit = currentServingUnit === '' ? null : currentServingUnit;
     }
@@ -384,6 +441,7 @@ export class FoodsComponent implements OnInit {
             shortDescription: updatedFood.shortDescription ?? null,
             glycemicIndex: updatedFood.glycemicIndex ?? null,
             glycemicLoad: updatedFood.glycemicLoad ?? null,
+            servingSize: updatedFood.servingSize ?? this.servingSizeControl.value,
             servingUnit: updatedFood.servingUnit ?? null,
             servingGramsPerUnit: updatedFood.servingGramsPerUnit ?? null
           };
@@ -501,22 +559,10 @@ export class FoodsComponent implements OnInit {
     const nf = food.nutritionFacts;
     const nutrients: SimplifiedNutrient[] = [];
 
-    // Data is per 100g. When showing per-serving, multiply by servingSizeG/100.
-    // Calculate multiplier from servingSizeG if available, otherwise use servingSizeMultiplicand
-    let multiplier = 1;
-    if (this.showPerServing) {
-      if (nf.servingSizeG && nf.servingSizeG > 0) {
-        multiplier = nf.servingSizeG / 100;
-      } else if (food.servingSizeMultiplicand && food.servingSizeMultiplicand !== 1) {
-        multiplier = food.servingSizeMultiplicand;
-      }
-    }
-
-    console.log('getNutrients - showPerServing:', this.showPerServing,
-      'multiplier:', multiplier,
-      'servingSizeMultiplicand:', food.servingSizeMultiplicand,
-      'servingSizeG:', nf.servingSizeG,
-      'food.id:', food.id);
+    // Per-serving multiplier off the 100g baseline.
+    // Preferred: ServingSize × GramsPerUnit (the new editor model).
+    // Fallback: nutritionFacts.servingSizeG, then multiplicand.
+    const multiplier = this.computePerServingMultiplier(food);
 
     // Reordered: Protein, Fat, Carbs, Calories
     if (typeof nf.proteinG === 'number') {
@@ -558,61 +604,49 @@ export class FoodsComponent implements OnInit {
     this.showingAllNutrients = !this.showingAllNutrients;
   }
 
-  // NEW: Toggle between per-serving and per-100g display
-  toggleServingMode() {
-    this.showPerServing = !this.showPerServing;
-    // Recalculate nutrients for the table
-    this.updateNutrientTableData();
-  }
-
   // Update the cached nutrient data for the mat-table
   private updateNutrientTableData(): void {
-    // Create a new array reference to trigger Angular change detection
     this.nutrientTableData = [...this.getNutrients(this.selectedFood)];
-    console.log('updateNutrientTableData called, new data:', this.nutrientTableData);
   }
 
-  // NEW: Get current display unit for footer
-  getDisplayUnit(): string {
-    if (this.showPerServing && this.selectedFood?.nutritionFacts?.servingSizeG) {
-      return `per ${Math.round(this.selectedFood.nutritionFacts.servingSizeG)}g`;
+  // Compute the per-serving multiplier off the 100g-normalized baseline.
+  // Priority: live form values (ServingSize × GramsPerUnit) → food.servingSizeG → multiplicand.
+  private computePerServingMultiplier(food: any): number {
+    const size = this.servingSizeControl?.value;
+    const gpu = this.servingGramsPerUnitControl?.value ?? food?.servingGramsPerUnit;
+    if (size && gpu && size > 0 && gpu > 0) {
+      return (size * gpu) / 100;
+    }
+    const nf = food?.nutritionFacts;
+    if (nf?.servingSizeG && nf.servingSizeG > 0) {
+      return nf.servingSizeG / 100;
+    }
+    if (food?.servingSizeMultiplicand && food.servingSizeMultiplicand !== 1) {
+      return food.servingSizeMultiplicand;
+    }
+    return 1;
+  }
+
+  // Footer summary line, e.g. "1 serving = 15g" or "per 100g" when no serving config.
+  getServingSummary(): string {
+    const size = this.servingSizeControl?.value;
+    const unit = this.servingUnitControl?.value;
+    const gpu = this.servingGramsPerUnitControl?.value ?? this.selectedFood?.servingGramsPerUnit;
+    if (size && unit && gpu && size > 0 && gpu > 0) {
+      const totalG = Math.round(size * gpu * 10) / 10;
+      return `${size} ${unit} = ${totalG}g`;
+    }
+    const ssg = this.selectedFood?.nutritionFacts?.servingSizeG;
+    if (ssg && ssg > 0) {
+      return `serving: ${Math.round(ssg)}g`;
     }
     return 'per 100g';
   }
 
-  // NEW: Get serving count for display
-  getServingCount(): string {
-    if (!this.selectedFood?.nutritionFacts?.servingSizeG) return '1';
-    
-    if (this.showPerServing) {
-      return '1';
-    } else {
-      // Per 100g mode: calculate how many servings in 100g
-      const servingsIn100g = 100 / this.selectedFood.nutritionFacts.servingSizeG;
-      return servingsIn100g.toFixed(1);
-    }
-  }
-
-  // NEW: Get label for serving count
-  getServingLabel(): string {
-    return this.showPerServing ? 'serving size:' : 'servings:';
-  }
-
-  // NEW: Calculate nutrient value based on display mode
+  // Per-serving nutrient value off a 100g baseline.
   public calculateNutrientValue(value: number): number {
     if (!this.selectedFood) return value;
-
-    // Use same multiplier logic as getNutrients()
-    let multiplier = 1;
-    if (this.showPerServing) {
-      const nf = this.selectedFood.nutritionFacts;
-      if (nf?.servingSizeG && nf.servingSizeG > 0) {
-        multiplier = nf.servingSizeG / 100;
-      } else if (this.selectedFood.servingSizeMultiplicand && this.selectedFood.servingSizeMultiplicand !== 1) {
-        multiplier = this.selectedFood.servingSizeMultiplicand;
-      }
-    }
-
+    const multiplier = this.computePerServingMultiplier(this.selectedFood);
     return Math.round(value * multiplier * 10) / 10;
   }
 

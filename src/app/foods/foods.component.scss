@@ -32,12 +32,25 @@
   }
 
   .search-field {
-    flex: 1;
-    max-width: 400px;
+    flex: 0 0 200px;   // halved from 400px max
+    max-width: 200px;
 
     @media (max-width: $mobile-breakpoint) {
       width: 100%;
       max-width: none;
+      flex: 1;
+    }
+  }
+
+  .clear-btn {
+    height: 36px;
+    min-width: 56px;
+    font-size: 12px;
+    padding: 0 10px;
+
+    @media (max-width: $mobile-breakpoint) {
+      width: auto;
+      height: 32px;
     }
   }
 
@@ -51,32 +64,28 @@
 
   .list-filter-field { width: 180px; flex-shrink: 0; }
 
-  .max-btn {
-    height: 36px;
-    min-width: 40px;
-    font-size: 12px;
-    padding: 0 8px;
-
-    @media (max-width: $mobile-breakpoint) {
-      width: auto;
-      height: 32px;
-    }
-  }
-
   .apply-btn {
     min-width: 36px;
-    width: 36px;
     height: 36px;
-    padding: 0;
+    padding: 0 8px;
     background-color: white !important;
     color: #888 !important;
     border: 1px solid #ccc;
     border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 
     &:hover { background-color: #f5f5f5 !important; }
 
     .mat-icon {
       margin: 0;
+    }
+
+    .result-count {
+      font-size: 12px;
+      color: #555;
+      font-family: monospace;
     }
   }
 }
@@ -427,6 +436,15 @@
         gap: 8px;
         margin-bottom: 16px;
 
+        .serving-size-field {
+          width: 110px;
+          flex-shrink: 0;
+
+          input {
+            font-size: 13px;
+          }
+        }
+
         .serving-unit-field {
           width: 140px;
           flex-shrink: 0;
@@ -438,6 +456,12 @@
 
           input {
             font-size: 13px;
+          }
+
+          // Visually mute when read-only (weight units auto-filled)
+          input[readonly] {
+            color: #666;
+            background-color: #fafafa;
           }
         }
       }
