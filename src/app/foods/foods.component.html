@@ -37,7 +37,6 @@
     </mat-form-field>
     <button mat-flat-button class="apply-btn" (click)="performSearch()">
       <mat-icon>keyboard_return</mat-icon>
-      <span *ngIf="resultCount !== null" class="result-count">({{ resultCount }})</span>
     </button>
   </div>
 
@@ -46,6 +45,10 @@
 
     <!-- Left sidebar: Results list with selection controls -->
     <div class="results-sidebar">
+
+      <div class="list-count-header" *ngIf="resultCount !== null">
+        Count <span class="count-value">{{ resultCount }}</span>
+      </div>
 
       <!-- Food list grouped by category -->
       <mat-selection-list #foodList
