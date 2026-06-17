@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RegiApiService } from '../services/regi-api.service';
 
@@ -55,16 +55,29 @@ export class ImageUploadComponent implements OnInit, OnChanges {
     this.loadExistingImages();
   }
 
-  ngOnChanges() {
+  ngOnChanges(changes: SimpleChanges) {
+    // When the parent switches to a different food, drop any in-progress upload
+    // state. Ingredients has no "existing URL" input, so it would otherwise leak
+    // a stale paste preview across foods.
+    if (changes['foodId'] && !changes['foodId'].firstChange) {
+      this.nutritionImageFile = null;
+      this.productImageFile = null;
+      this.ingredientsImageFile = null;
+      this.productImageDisplayName = '';
+      this.ingredientsImagePreview = null;
+    }
     this.loadExistingImages();
   }
 
+  // Sync the displayed previews with the existing URLs. Always assigns — clearing
+  // is just as important as setting, otherwise the previous food's image lingers.
+  // A staged file (user paste/drop) wins over the existing URL.
   private loadExistingImages() {
-    if (this.existingNutritionImageUrl) {
-      this.nutritionImagePreview = this.existingNutritionImageUrl;
+    if (!this.nutritionImageFile) {
+      this.nutritionImagePreview = this.existingNutritionImageUrl || null;
     }
-    if (this.existingProductImageUrl) {
-      this.productImagePreview = this.existingProductImageUrl;
+    if (!this.productImageFile) {
+      this.productImagePreview = this.existingProductImageUrl || null;
     }
   }
 

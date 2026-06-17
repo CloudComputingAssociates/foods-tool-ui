@@ -319,12 +319,12 @@ export class FoodsComponent implements OnInit {
     this.servingUnitControl.setValue(food.servingUnit ?? null, { emitEvent: false });
     this.servingGramsPerUnitControl.setValue(food.servingGramsPerUnit ?? null);
 
-    // Prefer the persisted ServingSize; fall back to derived servingSizeG/gramsPerUnit
-    // for older rows that haven't been edited yet. Round to whole units — the spinner
-    // is integer-stepped and 1.01-style backfill noise just confuses the user.
+    // Prefer the persisted ServingSize verbatim — if the user explicitly saved
+    // a fractional like 0.333, respect it. Only the *derived* fallback gets
+    // rounded, because that's where the 1.01-style backfill noise creeps in.
     let initialSize: number | null = null;
     if (typeof food.servingSize === 'number') {
-      initialSize = Math.round(food.servingSize);
+      initialSize = food.servingSize;
     } else {
       const totalG = food.nutritionFacts?.servingSizeG;
       const gpu = food.servingGramsPerUnit;
