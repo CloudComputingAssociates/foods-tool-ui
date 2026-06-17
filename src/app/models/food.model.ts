@@ -6,6 +6,7 @@ export interface Food {
   glycemicIndex?: number | null;
   glycemicLoad?: number | null;
   yehApproved?: boolean;
+  dataSource?: string | null;
   categoryName?: string | null;
   subCategoryName?: string | null;
   nutritionFacts?: NutritionFacts;
