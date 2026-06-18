@@ -61,6 +61,7 @@ export class UserFoodsAdminComponent {
   shareCandidateControl = new FormControl<boolean>(false);
   shareApprovedControl = new FormControl<boolean>(false);
   productPurchaseLinkControl = new FormControl<string | null>(null);
+  servingSizeControl = new FormControl<number | null>(null);
   servingUnitControl = new FormControl<string | null>(null);
   servingGramsPerUnitControl = new FormControl<number | null>(null);
   isSavingMetadata = false;
@@ -79,6 +80,7 @@ export class UserFoodsAdminComponent {
     productPurchaseLink: null as string | null,
     shareCandidate: false,
     shareApproved: false,
+    servingSize: null as number | null,
     servingUnit: null as string | null,
     servingGramsPerUnit: null as number | null
   };
@@ -274,6 +276,7 @@ export class UserFoodsAdminComponent {
     this.productPurchaseLinkControl.setValue(food.productPurchaseLink ?? null);
     this.shareCandidateControl.setValue(food.shareCandidate ?? false);
     this.shareApprovedControl.setValue(food.shareApproved ?? false);
+    this.servingSizeControl.setValue(food.servingSize ?? null);
     this.servingUnitControl.setValue(food.servingUnit ?? null);
     this.servingGramsPerUnitControl.setValue(food.servingGramsPerUnit ?? null);
 
@@ -285,6 +288,7 @@ export class UserFoodsAdminComponent {
       productPurchaseLink: food.productPurchaseLink ?? null,
       shareCandidate: food.shareCandidate ?? false,
       shareApproved: food.shareApproved ?? false,
+      servingSize: food.servingSize ?? null,
       servingUnit: food.servingUnit ?? null,
       servingGramsPerUnit: food.servingGramsPerUnit ?? null
     };
@@ -312,6 +316,7 @@ export class UserFoodsAdminComponent {
            this.productPurchaseLinkControl.value !== this.originalMetadata.productPurchaseLink ||
            this.shareCandidateControl.value !== this.originalMetadata.shareCandidate ||
            this.shareApprovedControl.value !== this.originalMetadata.shareApproved ||
+           this.servingSizeControl.value !== this.originalMetadata.servingSize ||
            this.servingUnitControl.value !== this.originalMetadata.servingUnit ||
            this.servingGramsPerUnitControl.value !== this.originalMetadata.servingGramsPerUnit;
   }
@@ -334,6 +339,9 @@ export class UserFoodsAdminComponent {
     }
     if (this.glycemicLoadControl.value !== this.originalMetadata.glycemicLoad) {
       update.glycemicLoad = this.glycemicLoadControl.value;
+    }
+    if (this.servingSizeControl.value !== this.originalMetadata.servingSize) {
+      update.servingSize = this.servingSizeControl.value;
     }
     if (this.servingUnitControl.value !== this.originalMetadata.servingUnit) {
       update.servingUnit = this.servingUnitControl.value === '' ? null : this.servingUnitControl.value;
@@ -400,6 +408,7 @@ export class UserFoodsAdminComponent {
         productPurchaseLink: this.productPurchaseLinkControl.value,
         shareCandidate: this.shareCandidateControl.value ?? false,
         shareApproved: this.shareApprovedControl.value ?? false,
+        servingSize: this.servingSizeControl.value,
         servingUnit: this.servingUnitControl.value,
         servingGramsPerUnit: this.servingGramsPerUnitControl.value
       };

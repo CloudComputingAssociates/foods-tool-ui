@@ -176,8 +176,12 @@
                 </button>
               </div>
 
-              <!-- Row 4: Serving Unit + Grams Per Unit -->
+              <!-- Row 4: Serving Size + Serving Unit + Grams Per Unit -->
               <div class="serving-config-row">
+                <mat-form-field appearance="outline" class="serving-size-field" floatLabel="always">
+                  <mat-label>Serving Size</mat-label>
+                  <input matInput type="number" [formControl]="servingSizeControl" min="0" step="1">
+                </mat-form-field>
                 <mat-form-field appearance="outline" class="serving-unit-field" floatLabel="always">
                   <mat-label>Serving Unit</mat-label>
                   <mat-select [formControl]="servingUnitControl">
