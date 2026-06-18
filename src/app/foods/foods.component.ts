@@ -362,7 +362,7 @@ export class FoodsComponent implements OnInit {
 
   private loadFoodLists(foodId: number | undefined): void {
     if (foodId == null) { this.foodLists = []; this.originalAssignedLists.clear(); return; }
-    this.foodsService.getLists(foodId, 'usda').subscribe({
+    this.foodsService.getLists(foodId, 'food').subscribe({
       next: (res) => {
         this.foodLists = res?.lists ?? [];
         this.originalAssignedLists = new Set(
@@ -483,10 +483,10 @@ export class FoodsComponent implements OnInit {
       if (foodId != null && hasListChanges) {
         const adds = this.foodLists
           .filter(l => l.assigned && !this.originalAssignedLists.has(l.name))
-          .map(l => this.foodsService.addFoodToList(l.name, foodId, 'usda').toPromise());
+          .map(l => this.foodsService.addFoodToList(l.name, foodId, 'food').toPromise());
         const removes = this.foodLists
           .filter(l => !l.assigned && this.originalAssignedLists.has(l.name))
-          .map(l => this.foodsService.removeFoodFromList(l.name, foodId, 'usda').toPromise());
+          .map(l => this.foodsService.removeFoodFromList(l.name, foodId, 'food').toPromise());
         try {
           await Promise.all([...adds, ...removes]);
           this.originalAssignedLists = new Set(

@@ -77,7 +77,7 @@ export class RegiApiService {
   // ========================================
 
   // All lists. Pass foodId to get an assigned flag per list (for the detail panel).
-  getLists(foodId?: number, foodSource: string = 'usda'): Observable<any> {
+  getLists(foodId?: number, foodSource: string = 'food'): Observable<any> {
     let url = `${this.baseUrl}/lists`;
     if (foodId != null) {
       url += `?foodId=${foodId}&foodSource=${foodSource}`;
@@ -90,14 +90,14 @@ export class RegiApiService {
     return this.http.get<any>(`${this.baseUrl}/lists/${encodeURIComponent(name)}/items`);
   }
 
-  addFoodToList(name: string, foodId: number, foodSource: string = 'usda'): Observable<any> {
+  addFoodToList(name: string, foodId: number, foodSource: string = 'food'): Observable<any> {
     return this.http.post<any>(
       `${this.baseUrl}/lists/${encodeURIComponent(name)}/items`,
       { foodId, foodSource }
     );
   }
 
-  removeFoodFromList(name: string, foodId: number, foodSource: string = 'usda'): Observable<any> {
+  removeFoodFromList(name: string, foodId: number, foodSource: string = 'food'): Observable<any> {
     return this.http.delete<any>(
       `${this.baseUrl}/lists/${encodeURIComponent(name)}/items/${foodId}?source=${foodSource}`
     );
