@@ -5,7 +5,7 @@ export interface Food {
   shortDescription?: string | null;
   glycemicIndex?: number | null;
   glycemicLoad?: number | null;
-  yehApproved?: boolean;
+  regiApproved?: boolean;
   dataSource?: string | null;
   categoryName?: string | null;
   subCategoryName?: string | null;
@@ -15,6 +15,7 @@ export interface Food {
   servingUnit?: string | null;
   servingGramsPerUnit?: number | null;
   brandInfo?: BrandInfo;
+  productPurchaseLink?: string | null;
   nutritionFactsImage?: string;
   foodImage?: string;
   foodImageThumbnail?: string;
@@ -25,12 +26,13 @@ export interface FoodMetadataUpdate {
   shortDescription?: string | null;
   glycemicIndex?: number | null;
   glycemicLoad?: number | null;
-  yehApproved?: boolean;
+  regiApproved?: boolean;
   servingSizeG?: number | null;
   servingSizeMultiplicand?: number | null;
   servingSize?: number | null;
   servingUnit?: string | null;
   servingGramsPerUnit?: number | null;
+  productPurchaseLink?: string | null;
 }
 
 export interface NutritionFacts {

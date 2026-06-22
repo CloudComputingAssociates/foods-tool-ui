@@ -445,6 +445,26 @@
         }
       }
 
+      .purchase-link-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-bottom: 16px;
+
+        .short-desc-field {
+          flex: 1;
+
+          input {
+            font-size: 13px;
+          }
+        }
+
+        .go-link-btn {
+          color: #1976d2;
+          margin-top: -12px;
+        }
+      }
+
       .serving-config-row {
         display: flex;
         gap: 8px;

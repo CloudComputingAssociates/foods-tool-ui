@@ -75,6 +75,7 @@ export class FoodsComponent implements OnInit {
   servingSizeControl = new FormControl<number | null>(null);
   servingUnitControl = new FormControl<string | null>(null);
   servingGramsPerUnitControl = new FormControl<number | null>(null);
+  productPurchaseLinkControl = new FormControl<string | null>(null);
   isSavingMetadata = false;
   isLoadingCompare = false;
   showFatSecretCompare = false;
@@ -87,13 +88,14 @@ export class FoodsComponent implements OnInit {
   private originalAssignedLists = new Set<string>();  // list handles assigned at load
 
   // Track original values to detect changes
-  private originalMetadata: { shortDescription: string | null; glycemicIndex: number | null; glycemicLoad: number | null; servingSize: number | null; servingUnit: string | null; servingGramsPerUnit: number | null } = {
+  private originalMetadata: { shortDescription: string | null; glycemicIndex: number | null; glycemicLoad: number | null; servingSize: number | null; servingUnit: string | null; servingGramsPerUnit: number | null; productPurchaseLink: string | null } = {
     shortDescription: null,
     glycemicIndex: null,
     glycemicLoad: null,
     servingSize: null,
     servingUnit: null,
-    servingGramsPerUnit: null
+    servingGramsPerUnit: null,
+    productPurchaseLink: null
   };
 
   constructor(
@@ -123,6 +125,14 @@ export class FoodsComponent implements OnInit {
 
   isWeightUnit(unit: string | null): boolean {
     return !!unit && this.WEIGHT_UNIT_GRAMS[unit] !== undefined;
+  }
+
+  openPurchaseLink(): void {
+    const url = this.productPurchaseLinkControl.value;
+    if (url) {
+      const fullUrl = url.startsWith('http') ? url : 'https://' + url;
+      window.open(fullUrl, '_blank');
+    }
   }
 
   performSearch() {
@@ -318,6 +328,7 @@ export class FoodsComponent implements OnInit {
     // emitEvent:false so we don't trigger the weight-unit auto-fill on load.
     this.servingUnitControl.setValue(food.servingUnit ?? null, { emitEvent: false });
     this.servingGramsPerUnitControl.setValue(food.servingGramsPerUnit ?? null);
+    this.productPurchaseLinkControl.setValue(food.productPurchaseLink ?? null);
 
     // Prefer the persisted ServingSize verbatim — if the user explicitly saved
     // a fractional like 0.333, respect it. Only the *derived* fallback gets
@@ -341,7 +352,8 @@ export class FoodsComponent implements OnInit {
       glycemicLoad: food.glycemicLoad ?? null,
       servingSize: initialSize,
       servingUnit: food.servingUnit ?? null,
-      servingGramsPerUnit: food.servingGramsPerUnit ?? null
+      servingGramsPerUnit: food.servingGramsPerUnit ?? null,
+      productPurchaseLink: food.productPurchaseLink ?? null
     };
 
     this.loadFoodLists(food.id);
@@ -355,7 +367,8 @@ export class FoodsComponent implements OnInit {
     this.servingSizeControl.setValue(null);
     this.servingUnitControl.setValue(null, { emitEvent: false });
     this.servingGramsPerUnitControl.setValue(null);
-    this.originalMetadata = { shortDescription: null, glycemicIndex: null, glycemicLoad: null, servingSize: null, servingUnit: null, servingGramsPerUnit: null };
+    this.productPurchaseLinkControl.setValue(null);
+    this.originalMetadata = { shortDescription: null, glycemicIndex: null, glycemicLoad: null, servingSize: null, servingUnit: null, servingGramsPerUnit: null, productPurchaseLink: null };
     this.foodLists = [];
     this.originalAssignedLists.clear();
   }
@@ -398,12 +411,15 @@ export class FoodsComponent implements OnInit {
     const currentServingUnit = this.servingUnitControl.value;
     const currentGramsPerUnit = this.servingGramsPerUnitControl.value;
 
+    const currentPurchaseLink = this.productPurchaseLinkControl.value;
+
     return currentShortDesc !== this.originalMetadata.shortDescription ||
            currentGI !== this.originalMetadata.glycemicIndex ||
            currentLoad !== this.originalMetadata.glycemicLoad ||
            currentServingSize !== this.originalMetadata.servingSize ||
            currentServingUnit !== this.originalMetadata.servingUnit ||
            currentGramsPerUnit !== this.originalMetadata.servingGramsPerUnit ||
+           currentPurchaseLink !== this.originalMetadata.productPurchaseLink ||
            this.hasListAssignmentChanges();
   }
 
@@ -445,6 +461,10 @@ export class FoodsComponent implements OnInit {
     if (currentGramsPerUnit !== this.originalMetadata.servingGramsPerUnit) {
       update.servingGramsPerUnit = currentGramsPerUnit;
     }
+    const currentPurchaseLink = this.productPurchaseLinkControl.value;
+    if (currentPurchaseLink !== this.originalMetadata.productPurchaseLink) {
+      update.productPurchaseLink = currentPurchaseLink === '' ? null : currentPurchaseLink;
+    }
 
     const hasMetadataChanges = Object.keys(update).length > 0;
     const hasListChanges = this.hasListAssignmentChanges();
@@ -473,7 +493,8 @@ export class FoodsComponent implements OnInit {
             glycemicLoad: updatedFood.glycemicLoad ?? null,
             servingSize: updatedFood.servingSize ?? this.servingSizeControl.value,
             servingUnit: updatedFood.servingUnit ?? null,
-            servingGramsPerUnit: updatedFood.servingGramsPerUnit ?? null
+            servingGramsPerUnit: updatedFood.servingGramsPerUnit ?? null,
+            productPurchaseLink: updatedFood.productPurchaseLink ?? null
           };
         }
       }

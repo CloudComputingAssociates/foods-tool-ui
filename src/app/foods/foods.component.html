@@ -152,6 +152,21 @@
                 </mat-form-field>
               </div>
 
+              <!-- Row: Product Purchase Hyperlink -->
+              <div class="purchase-link-row">
+                <mat-form-field appearance="outline" class="short-desc-field" floatLabel="always">
+                  <mat-label>Product Purchase Hyperlink</mat-label>
+                  <input matInput [formControl]="productPurchaseLinkControl" maxlength="500">
+                </mat-form-field>
+                <button mat-icon-button
+                        class="go-link-btn"
+                        [disabled]="!productPurchaseLinkControl.value"
+                        (click)="openPurchaseLink()"
+                        matTooltip="Open link in new tab">
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+
               <!-- Row 4: Serving Size + Serving Unit + Grams Per Unit -->
               <div class="serving-config-row">
                 <mat-form-field appearance="outline" class="serving-size-field" floatLabel="always">
