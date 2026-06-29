@@ -4,8 +4,10 @@ import { FatSecretCompareResponse, FatSecretCompareFood, FatSecretCompareServing
 interface NutrientRow {
   label: string;
   unit: string;
-  currentValue: number;
-  fatsecretValue: number;
+  // null = no data on that side (rendered as "—"). Never coerced to 0 for
+  // compare — a missing value isn't equal to a known zero.
+  currentValue: number | null;
+  fatsecretValue: number | null;
   differs: boolean;
 }
 
@@ -123,6 +125,20 @@ export class FatsecretCompareComponent implements OnChanges {
     this.nutrientRows = rows.map(r => {
       const cv = this.numVal(current[r.currentKey]);
       const fv = this.numVal(fs[r.fsKey]);
+      // null = no data on either side. We refuse to assert equality OR
+      // difference when one side is unknown — render "—" and skip the diff
+      // highlight (a known 0 vs no-data IS a real semantic difference, but
+      // displaying it as "differs" would mislead the user into thinking one
+      // source reported a value).
+      if (cv === null || fv === null) {
+        return {
+          label: r.label,
+          unit: r.unit,
+          currentValue: cv,
+          fatsecretValue: fv,
+          differs: false,
+        };
+      }
       const threshold = Math.max(cv, fv) * 0.01; // 1% of larger value
       return {
         label: r.label,
@@ -134,8 +150,10 @@ export class FatsecretCompareComponent implements OnChanges {
     });
   }
 
-  private numVal(v: any): number {
-    return typeof v === 'number' ? Math.round(v * 10) / 10 : 0;
+  // null = no data (missing or non-numeric). Distinct from 0, which means
+  // "known zero" and IS a comparable value.
+  private numVal(v: any): number | null {
+    return typeof v === 'number' ? Math.round(v * 10) / 10 : null;
   }
 
   // Serving info rows for display
@@ -152,23 +170,29 @@ export class FatsecretCompareComponent implements OnChanges {
         fatsecret: serving.mappedUnit,
         differs: (food.servingUnit || '') !== serving.mappedUnit
       },
+      // For each numeric row: a missing current value (null/undefined) is not
+      // a known 0 — refuse to flag it as "differs". The "(none)" display is
+      // the signal to the user that there's no value to compare against.
       {
         label: 'Grams/Unit',
         current: food.servingGramsPerUnit?.toFixed(1) ?? '(none)',
         fatsecret: serving.gramsPerUnit.toFixed(1),
-        differs: Math.abs((food.servingGramsPerUnit ?? 0) - serving.gramsPerUnit) > 0.1
+        differs: food.servingGramsPerUnit != null &&
+          Math.abs(food.servingGramsPerUnit - serving.gramsPerUnit) > 0.1
       },
       {
         label: 'Serving Size (g)',
         current: currentNf?.servingSizeG?.toFixed(1) ?? '(none)',
         fatsecret: serving.metricServingAmountG.toFixed(1),
-        differs: Math.abs((currentNf?.servingSizeG ?? 0) - serving.metricServingAmountG) > 0.1
+        differs: currentNf?.servingSizeG != null &&
+          Math.abs(currentNf.servingSizeG - serving.metricServingAmountG) > 0.1
       },
       {
         label: 'Multiplicand',
         current: food.servingSizeMultiplicand?.toFixed(2) ?? '(none)',
         fatsecret: (serving.metricServingAmountG / 100).toFixed(2),
-        differs: Math.abs((food.servingSizeMultiplicand ?? 0) - serving.metricServingAmountG / 100) > 0.01
+        differs: food.servingSizeMultiplicand != null &&
+          Math.abs(food.servingSizeMultiplicand - serving.metricServingAmountG / 100) > 0.01
       },
       {
         label: 'Household',

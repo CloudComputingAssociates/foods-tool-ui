@@ -13,7 +13,7 @@ interface FoodGroup {
 
 interface SimplifiedNutrient {
   label: string;
-  value: number;
+  value: number | string;
   unit: string;
 }
 
@@ -456,14 +456,11 @@ export class UserFoodsAdminComponent {
       multiplier = nf.servingSizeG / 100;
     }
 
-    if (typeof nf.proteinG === 'number')
-      nutrients.push({ label: 'Protein', value: Math.round(nf.proteinG * multiplier * 10) / 10, unit: 'g' });
-    if (typeof nf.totalFatG === 'number')
-      nutrients.push({ label: 'Fat', value: Math.round(nf.totalFatG * multiplier * 10) / 10, unit: 'g' });
-    if (typeof nf.totalCarbohydrateG === 'number')
-      nutrients.push({ label: 'Carbs', value: Math.round(nf.totalCarbohydrateG * multiplier * 10) / 10, unit: 'g' });
-    if (typeof nf.calories === 'number')
-      nutrients.push({ label: 'Calories', value: Math.round(nf.calories * multiplier), unit: 'kcal' });
+    // null/undefined source → '—' (unknown), never 0 (which means known-zero).
+    nutrients.push({ label: 'Protein',  value: typeof nf.proteinG           === 'number' ? Math.round(nf.proteinG * multiplier * 10) / 10           : '—', unit: 'g' });
+    nutrients.push({ label: 'Fat',      value: typeof nf.totalFatG          === 'number' ? Math.round(nf.totalFatG * multiplier * 10) / 10          : '—', unit: 'g' });
+    nutrients.push({ label: 'Carbs',    value: typeof nf.totalCarbohydrateG === 'number' ? Math.round(nf.totalCarbohydrateG * multiplier * 10) / 10 : '—', unit: 'g' });
+    nutrients.push({ label: 'Calories', value: typeof nf.calories           === 'number' ? Math.round(nf.calories * multiplier)                     : '—', unit: 'kcal' });
 
     return nutrients;
   }
@@ -481,7 +478,9 @@ export class UserFoodsAdminComponent {
     this.nutrientTableData = [...this.getNutrients(this.selectedFood)];
   }
 
-  calculateNutrientValue(value: number): number {
+  // null/undefined = unknown (render as '—', NOT 0).
+  calculateNutrientValue(value: number | null | undefined): number | string {
+    if (value == null) return '—';
     if (!this.selectedFood) return value;
     let multiplier = 1;
     if (this.showPerServing) {
@@ -501,9 +500,13 @@ export class UserFoodsAdminComponent {
   }
 
   getServingCount(): string {
-    if (!this.selectedFood?.nutritionFacts?.servingSizeG) return '1';
+    // 0g serving size is as useless as null for a real food — both mean "no
+    // usable value", so fall back to '1'. Spelled out (rather than a bare
+    // falsy check) so a future reader doesn't mistake it for an oversight.
+    const ssG = this.selectedFood?.nutritionFacts?.servingSizeG;
+    if (ssG == null || ssG === 0) return '1';
     if (this.showPerServing) return '1';
-    return (100 / this.selectedFood.nutritionFacts.servingSizeG).toFixed(1);
+    return (100 / ssG).toFixed(1);
   }
 
   getServingLabel(): string {

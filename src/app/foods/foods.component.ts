@@ -8,7 +8,7 @@ import { ImageUploadComponent } from '../image-upload/image-upload.component';
 
 interface SimplifiedNutrient {
   label: string;
-  value: number;
+  value: number | string;
   unit: string;
 }
 
@@ -337,9 +337,14 @@ export class FoodsComponent implements OnInit {
     if (typeof food.servingSize === 'number') {
       initialSize = food.servingSize;
     } else {
+      // Derive from NutritionFacts.servingSizeG / servingGramsPerUnit.
+      // For a real food a 0g serving has no meaning, so 0 and null are both
+      // treated as "no usable value" — fall through and leave initialSize null
+      // (the form control stays unset). Explicit nullish + >0 checks so the
+      // intent is obvious and we never feed NaN/Infinity to Math.round.
       const totalG = food.nutritionFacts?.servingSizeG;
       const gpu = food.servingGramsPerUnit;
-      if (totalG && gpu && gpu > 0) {
+      if (totalG != null && totalG > 0 && gpu != null && gpu > 0) {
         initialSize = Math.round(totalG / gpu);
       }
     }
@@ -616,37 +621,30 @@ export class FoodsComponent implements OnInit {
     const multiplier = this.computePerServingMultiplier(food);
 
     // Reordered: Protein, Fat, Carbs, Calories
-    if (typeof nf.proteinG === 'number') {
-      nutrients.push({
-        label: 'Protein',
-        value: Math.round(nf.proteinG * multiplier * 10) / 10,
-        unit: 'g'
-      });
-    }
+    // null/undefined source → '—' (unknown), never 0 (which means known-zero).
+    nutrients.push({
+      label: 'Protein',
+      value: typeof nf.proteinG === 'number' ? Math.round(nf.proteinG * multiplier * 10) / 10 : '—',
+      unit: 'g'
+    });
 
-    if (typeof nf.totalFatG === 'number') {
-      nutrients.push({
-        label: 'Fat',
-        value: Math.round(nf.totalFatG * multiplier * 10) / 10,
-        unit: 'g'
-      });
-    }
+    nutrients.push({
+      label: 'Fat',
+      value: typeof nf.totalFatG === 'number' ? Math.round(nf.totalFatG * multiplier * 10) / 10 : '—',
+      unit: 'g'
+    });
 
-    if (typeof nf.totalCarbohydrateG === 'number') {
-      nutrients.push({
-        label: 'Carbs',
-        value: Math.round(nf.totalCarbohydrateG * multiplier * 10) / 10,
-        unit: 'g'
-      });
-    }
+    nutrients.push({
+      label: 'Carbs',
+      value: typeof nf.totalCarbohydrateG === 'number' ? Math.round(nf.totalCarbohydrateG * multiplier * 10) / 10 : '—',
+      unit: 'g'
+    });
 
-    if (typeof nf.calories === 'number') {
-      nutrients.push({
-        label: 'Calories',
-        value: Math.round(nf.calories * multiplier),
-        unit: 'kcal'
-      });
-    }
+    nutrients.push({
+      label: 'Calories',
+      value: typeof nf.calories === 'number' ? Math.round(nf.calories * multiplier) : '—',
+      unit: 'kcal'
+    });
 
     return nutrients;
   }
@@ -695,7 +693,9 @@ export class FoodsComponent implements OnInit {
   }
 
   // Per-serving nutrient value off a 100g baseline.
-  public calculateNutrientValue(value: number): number {
+  // null/undefined = unknown (render as '—', NOT 0).
+  public calculateNutrientValue(value: number | null | undefined): number | string {
+    if (value == null) return '—';
     if (!this.selectedFood) return value;
     const multiplier = this.computePerServingMultiplier(this.selectedFood);
     return Math.round(value * multiplier * 10) / 10;
