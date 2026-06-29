@@ -3,7 +3,6 @@
 
 .foods-container {
   padding: 20px;
-  max-width: 1400px;
   margin: 0 auto;
 
   @media (max-width: $mobile-breakpoint) {
@@ -593,12 +592,12 @@
 
     .all-nutrients {
       flex: 1;
-      max-width: 400px;
+      min-width: 420px;
       border-left: 1px solid #ddd;
       padding-left: 20px;
 
       @media (max-width: $tablet-breakpoint) {
-        max-width: none;
+        min-width: 0;
         border-left: none;
         border-top: 1px solid #ddd;
         padding-left: 0;
