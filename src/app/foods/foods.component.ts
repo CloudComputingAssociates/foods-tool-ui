@@ -1,7 +1,8 @@
-import { Component, OnInit, ChangeDetectorRef, ViewChild } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RegiApiService } from '../services/regi-api.service';
+import { ServingUnitsService } from '../services/serving-units.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Food, FoodMetadataUpdate, FatSecretCompareResponse } from '../models/food.model';
 import { ImageUploadComponent } from '../image-upload/image-upload.component';
@@ -33,6 +34,7 @@ interface FoodGroup {
 })
 export class FoodsComponent implements OnInit {
   @ViewChild(ImageUploadComponent) imageUploadComponent!: ImageUploadComponent;
+  @ViewChild('newUnitInput') newUnitInput?: ElementRef<HTMLInputElement>;
 
   searchControl = new FormControl('');
   limitControl = new FormControl(300);  // Default to 300 results (was 50)
@@ -56,10 +58,14 @@ export class FoodsComponent implements OnInit {
   showPerServing = true;
 
   // Grams per unit for fixed weight units. Editable units (whole/cup/tbsp/tsp) are user-entered.
+  // This is the CLOSED weight-unit set (g/oz/lbs/kg) that drives isWeightUnit() and the
+  // GramsPerUnit auto-fill/read-only behavior — it is deliberately hardcoded, NOT derived
+  // from the fetched serving-unit vocabulary.
   private readonly WEIGHT_UNIT_GRAMS: { [key: string]: number } = {
     g: 1,
     oz: 28.3495,
     lbs: 453.592,
+    kg: 1000,
   };
 
   // Cached nutrient data for the table (recalculated when food or mode changes)
@@ -81,7 +87,15 @@ export class FoodsComponent implements OnInit {
   showFatSecretCompare = false;
   fatSecretCompareData: FatSecretCompareResponse | null = null;
 
-  readonly servingUnitOptions = ['whole', 'cup', 'tbsp', 'tsp', 'oz', 'lbs', 'g'];
+  // Populated from the serving-units endpoint (seed as the initial/fallback list).
+  servingUnitOptions: string[] = [...ServingUnitsService.BASE_SEED];
+
+  // Sentinel option value for "Add new…" — switches the field to free-typing.
+  readonly ADD_NEW_UNIT = '__add_new_unit__';
+  // True while the Serving Unit field is a free-type input rather than the dropdown.
+  isAddingServingUnit = false;
+  // Value to restore if the free-type entry is left blank on blur.
+  private priorServingUnit: string | null = null;
 
   // List assignment state (detail panel)
   foodLists: { name: string; description: string; toolTip?: string; assigned: boolean }[] = [];
@@ -100,6 +114,7 @@ export class FoodsComponent implements OnInit {
 
   constructor(
     private foodsService: RegiApiService,
+    private servingUnits: ServingUnitsService,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef
   ) {}
@@ -108,6 +123,13 @@ export class FoodsComponent implements OnInit {
     this.foodsService.getLists().subscribe({
       next: (res) => { this.availableLists = res?.lists ?? []; },
       error: () => { this.availableLists = []; }
+    });
+
+    // Load the serving-unit vocabulary (falls back to the base seed on failure).
+    this.servingUnits.getServingUnits().subscribe(units => {
+      this.servingUnitOptions = units;
+      // Keep the currently-selected unit visible even if it isn't in the fetched list.
+      this.ensureUnitOption(this.servingUnitControl.value);
     });
 
     // Auto-fill GramsPerUnit when ServingUnit becomes a fixed-weight unit (g/oz/lbs).
@@ -125,6 +147,48 @@ export class FoodsComponent implements OnInit {
 
   isWeightUnit(unit: string | null): boolean {
     return !!unit && this.WEIGHT_UNIT_GRAMS[unit] !== undefined;
+  }
+
+  // Dropdown selection changed. Picking "Add new…" swaps the field to a free-type
+  // input; any real pick just becomes the value to revert to next time.
+  onServingUnitSelectionChange(value: string | null): void {
+    if (value === this.ADD_NEW_UNIT) {
+      this.isAddingServingUnit = true;
+      // Clear the field for typing without tripping the weight-unit auto-fill.
+      this.servingUnitControl.setValue(null, { emitEvent: false });
+      setTimeout(() => this.newUnitInput?.nativeElement.focus());
+    } else {
+      this.priorServingUnit = value;
+    }
+  }
+
+  // Commit a free-typed unit on blur. Blank reverts to the prior selection;
+  // otherwise trim (normalize) and snap to an existing option if it only differs
+  // by case, so the dropdown can display it. The server re-normalizes on save.
+  commitNewServingUnit(): void {
+    this.isAddingServingUnit = false;
+    const typed = (this.servingUnitControl.value ?? '').trim();
+    if (!typed) {
+      this.servingUnitControl.setValue(this.priorServingUnit);
+      return;
+    }
+    const existing = this.servingUnitOptions.find(u => u.toLowerCase() === typed.toLowerCase());
+    const finalValue = existing ?? typed;
+    if (!existing) {
+      this.servingUnitOptions = [...this.servingUnitOptions, finalValue];
+    }
+    this.priorServingUnit = finalValue;
+    this.servingUnitControl.setValue(finalValue);
+  }
+
+  // Ensure a unit is present in the dropdown options (case-insensitive), so a
+  // food carrying a custom/older unit still renders as selected.
+  private ensureUnitOption(unit: string | null | undefined): void {
+    const trimmed = (unit ?? '').trim();
+    if (!trimmed) { return; }
+    if (!this.servingUnitOptions.some(u => u.toLowerCase() === trimmed.toLowerCase())) {
+      this.servingUnitOptions = [...this.servingUnitOptions, trimmed];
+    }
   }
 
   openPurchaseLink(): void {
@@ -327,6 +391,9 @@ export class FoodsComponent implements OnInit {
     this.glycemicLoadControl.setValue(food.glycemicLoad ?? null);
     // emitEvent:false so we don't trigger the weight-unit auto-fill on load.
     this.servingUnitControl.setValue(food.servingUnit ?? null, { emitEvent: false });
+    this.isAddingServingUnit = false;
+    this.priorServingUnit = food.servingUnit ?? null;
+    this.ensureUnitOption(food.servingUnit);
     this.servingGramsPerUnitControl.setValue(food.servingGramsPerUnit ?? null);
     this.productPurchaseLinkControl.setValue(food.productPurchaseLink ?? null);
 
@@ -371,6 +438,8 @@ export class FoodsComponent implements OnInit {
     this.glycemicLoadControl.setValue(null);
     this.servingSizeControl.setValue(null);
     this.servingUnitControl.setValue(null, { emitEvent: false });
+    this.isAddingServingUnit = false;
+    this.priorServingUnit = null;
     this.servingGramsPerUnitControl.setValue(null);
     this.productPurchaseLinkControl.setValue(null);
     this.originalMetadata = { shortDescription: null, glycemicIndex: null, glycemicLoad: null, servingSize: null, servingUnit: null, servingGramsPerUnit: null, productPurchaseLink: null };

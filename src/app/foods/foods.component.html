@@ -179,9 +179,18 @@
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="serving-unit-field" floatLabel="always">
                   <mat-label>Serving Unit</mat-label>
-                  <mat-select [formControl]="servingUnitControl">
+                  <input *ngIf="isAddingServingUnit"
+                         matInput
+                         #newUnitInput
+                         [formControl]="servingUnitControl"
+                         (blur)="commitNewServingUnit()"
+                         placeholder="type a unit">
+                  <mat-select *ngIf="!isAddingServingUnit"
+                              [formControl]="servingUnitControl"
+                              (selectionChange)="onServingUnitSelectionChange($event.value)">
                     <mat-option [value]="null">-- none --</mat-option>
                     <mat-option *ngFor="let u of servingUnitOptions" [value]="u">{{u}}</mat-option>
+                    <mat-option [value]="ADD_NEW_UNIT">Add new…</mat-option>
                   </mat-select>
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="grams-per-unit-field" floatLabel="always">

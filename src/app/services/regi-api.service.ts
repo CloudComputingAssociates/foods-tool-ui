@@ -72,6 +72,12 @@ export class RegiApiService {
     return this.http.patch<Food>(`${this.baseUrl}/foods/${foodId}`, update);
   }
 
+  // Distinct serving-unit vocabulary (RegiApproved foods + base seed), server-normalized.
+  // GET /api/foods/serving-units -> { units: string[] }
+  getServingUnits(): Observable<{ units: string[] }> {
+    return this.http.get<{ units: string[] }>(`${this.baseUrl}/foods/serving-units`);
+  }
+
   // ========================================
   // FOOD LISTS (curated)
   // ========================================

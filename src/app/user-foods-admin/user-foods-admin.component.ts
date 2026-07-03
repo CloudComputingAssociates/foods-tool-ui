@@ -1,7 +1,8 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, ElementRef } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RegiApiService } from '../services/regi-api.service';
+import { ServingUnitsService } from '../services/serving-units.service';
 import { AdminUser } from '../models/user.model';
 import { ImageUploadComponent } from '../image-upload/image-upload.component';
 
@@ -24,6 +25,7 @@ interface SimplifiedNutrient {
 })
 export class UserFoodsAdminComponent {
   @ViewChild(ImageUploadComponent) imageUploadComponent!: ImageUploadComponent;
+  @ViewChild('newUnitInput') newUnitInput?: ElementRef<HTMLInputElement>;
 
   // User search controls
   nameSearchControl = new FormControl('');
@@ -66,7 +68,15 @@ export class UserFoodsAdminComponent {
   servingGramsPerUnitControl = new FormControl<number | null>(null);
   isSavingMetadata = false;
 
-  readonly servingUnitOptions = ['whole', 'cup', 'tbsp', 'tsp', 'oz', 'lbs', 'g'];
+  // Populated from the serving-units endpoint (seed as the initial/fallback list).
+  servingUnitOptions: string[] = [...ServingUnitsService.BASE_SEED];
+
+  // Sentinel option value for "Add new…" — switches the field to free-typing.
+  readonly ADD_NEW_UNIT = '__add_new_unit__';
+  // True while the Serving Unit field is a free-type input rather than the dropdown.
+  isAddingServingUnit = false;
+  // Value to restore if the free-type entry is left blank on blur.
+  private priorServingUnit: string | null = null;
 
   // Category options (loaded from API)
   categoryOptions: { id: number; name: string }[] = [];
@@ -93,6 +103,7 @@ export class UserFoodsAdminComponent {
 
   constructor(
     private apiService: RegiApiService,
+    private servingUnits: ServingUnitsService,
     private snackBar: MatSnackBar
   ) {
     this.apiService.getCategories().subscribe({
@@ -101,6 +112,57 @@ export class UserFoodsAdminComponent {
         this.categoryOptions = list.map((c: any) => ({ id: c.categoryId || c.id, name: c.categoryName || c.name }));
       }
     });
+
+    // Load the serving-unit vocabulary (falls back to the base seed on failure).
+    this.servingUnits.getServingUnits().subscribe(units => {
+      this.servingUnitOptions = units;
+      this.ensureUnitOption(this.servingUnitControl.value);
+    });
+  }
+
+  // ========================================
+  // SERVING UNIT COMBOBOX
+  // ========================================
+
+  // Dropdown selection changed. Picking "Add new…" swaps the field to a free-type
+  // input; any real pick just becomes the value to revert to next time.
+  onServingUnitSelectionChange(value: string | null): void {
+    if (value === this.ADD_NEW_UNIT) {
+      this.isAddingServingUnit = true;
+      this.servingUnitControl.setValue(null, { emitEvent: false });
+      setTimeout(() => this.newUnitInput?.nativeElement.focus());
+    } else {
+      this.priorServingUnit = value;
+    }
+  }
+
+  // Commit a free-typed unit on blur. Blank reverts to the prior selection;
+  // otherwise trim (normalize) and snap to an existing option if it only differs
+  // by case, so the dropdown can display it. The server re-normalizes on save.
+  commitNewServingUnit(): void {
+    this.isAddingServingUnit = false;
+    const typed = (this.servingUnitControl.value ?? '').trim();
+    if (!typed) {
+      this.servingUnitControl.setValue(this.priorServingUnit);
+      return;
+    }
+    const existing = this.servingUnitOptions.find(u => u.toLowerCase() === typed.toLowerCase());
+    const finalValue = existing ?? typed;
+    if (!existing) {
+      this.servingUnitOptions = [...this.servingUnitOptions, finalValue];
+    }
+    this.priorServingUnit = finalValue;
+    this.servingUnitControl.setValue(finalValue);
+  }
+
+  // Ensure a unit is present in the dropdown options (case-insensitive), so a
+  // food carrying a custom/older unit still renders as selected.
+  private ensureUnitOption(unit: string | null | undefined): void {
+    const trimmed = (unit ?? '').trim();
+    if (!trimmed) { return; }
+    if (!this.servingUnitOptions.some(u => u.toLowerCase() === trimmed.toLowerCase())) {
+      this.servingUnitOptions = [...this.servingUnitOptions, trimmed];
+    }
   }
 
   // ========================================
@@ -278,6 +340,9 @@ export class UserFoodsAdminComponent {
     this.shareApprovedControl.setValue(food.shareApproved ?? false);
     this.servingSizeControl.setValue(food.servingSize ?? null);
     this.servingUnitControl.setValue(food.servingUnit ?? null);
+    this.isAddingServingUnit = false;
+    this.priorServingUnit = food.servingUnit ?? null;
+    this.ensureUnitOption(food.servingUnit);
     this.servingGramsPerUnitControl.setValue(food.servingGramsPerUnit ?? null);
 
     this.originalMetadata = {
