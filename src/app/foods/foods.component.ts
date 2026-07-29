@@ -207,6 +207,10 @@ export class FoodsComponent implements OnInit {
     let searchObservable;
     if (selectedList !== 'all') {
       searchObservable = this.foodsService.getListItems(selectedList);
+    } else if (/^\d+$/.test(query)) {
+      // All-digits query -> treat as a FoodID lookup (GET /foods/{id}).
+      // Returns a single Food object; the normalizer below handles that shape.
+      searchObservable = this.foodsService.getFoodById(Number(query));
     } else {
       if (query.length < 2) { return; }
       searchObservable = this.foodsService.searchFoods(query, limit);
@@ -317,6 +321,22 @@ export class FoodsComponent implements OnInit {
         this.isLoading = false;
         this.foods = [];
         this.selectedFood = null;
+        this.selectedIndex = -1;
+        this.clearMetadataFields();
+        this.nutrientTableData = [];
+
+        // A 404 on an ID lookup just means "no food with that ID" — not an error.
+        if (error.status === 404) {
+          this.resultCount = 0;
+          this.snackBar.open('No foods found. Count: 0', '✕', {
+            duration: 10000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top',
+            panelClass: ['info-snackbar']
+          });
+          return;
+        }
+
         this.resultCount = null;
         this.handleError(error, 'Failed to search foods');
       }

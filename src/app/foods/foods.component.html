@@ -7,7 +7,7 @@
       <input matInput
              [formControl]="searchControl"
              (keyup.enter)="performSearch()"
-             placeholder="Food name...">
+             placeholder="Food (Name or ID)...">
       <mat-spinner *ngIf="isLoading"
                    matSuffix
                    diameter="20">

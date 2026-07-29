@@ -39,6 +39,12 @@ export class RegiApiService {
     return this.http.get<any>(url);
   }
 
+  // Fetch a single food by its numeric FoodID (GET /foods/{id}).
+  // Returns the Food object directly (not wrapped in {count, foods}).
+  getFoodById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/foods/${id}`);
+  }
+
   // Get all YEH Approved foods (optionally filtered by query)
   // Uses /api/foods/search/all/yehapproved endpoint
   searchYehApprovedFoods(limit?: number): Observable<any> {

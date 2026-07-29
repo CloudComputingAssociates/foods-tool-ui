@@ -74,4 +74,20 @@ When a sweep touches a field whose token also appears above, change ONLY the typ
 
 - Design services around a single responsibility
 - Use the `providedIn: 'root'` option for singleton services
-- Use the `inject()` function instead of constructor injection
+- Use the `inject()` function instead of constructor injectionadd Food ID lookup to Filters search (numeric query -> GET /foods/{id})
+
+Typing an all-digits query in the Foods Filters search now performs a
+FoodID lookup via the existing GET /foods/{id} endpoint instead of a
+name substring match. Name searches are unchanged and still match both
+Description and ShortDescription in the API.
+
+- placeholder: "Food name..." -> "Food (Name or ID)..."
+- add regiApiService.getFoodById(id)
+- route all-digit queries to the ID endpoint; single-object result is
+  handled by the existing normalizer
+- treat a 404 (bad ID) as "No foods found" instead of an error toast
+
+No API change: search already queries Description OR ShortDescription,
+and the /foods/{id} endpoint already existed.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
