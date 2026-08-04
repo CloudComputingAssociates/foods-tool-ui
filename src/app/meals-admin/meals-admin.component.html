@@ -1,0 +1,148 @@
+<div class="meals-admin-container">
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <span class="filter-title">Filters</span>
+    <mat-form-field appearance="fill" class="search-field">
+      <mat-label>Meal Plan Name</mat-label>
+      <input matInput [formControl]="nameSearchControl" (keyup.enter)="applyFilters()" placeholder="Search by name...">
+    </mat-form-field>
+    <mat-checkbox [formControl]="communityFilterControl">Community Candidate</mat-checkbox>
+    <mat-checkbox [formControl]="yehFilterControl">YEH Approved</mat-checkbox>
+    <button mat-flat-button class="apply-btn" (click)="applyFilters()" [disabled]="isLoading">
+      <mat-icon>keyboard_return</mat-icon>
+    </button>
+  </div>
+
+  <!-- Results layout -->
+  <div class="results-layout" *ngIf="mealPlans.length > 0 || isLoading">
+
+    <!-- Left sidebar: meal plan list -->
+    <div class="results-sidebar">
+      <div class="plan-list">
+        <div *ngIf="isLoading" class="loading-row">
+          <mat-spinner diameter="24"></mat-spinner>
+          <span>Loading...</span>
+        </div>
+        <div *ngFor="let plan of mealPlans"
+             class="plan-item"
+             [class.selected]="selectedPlan?.id === plan.id"
+             (click)="selectPlan(plan)">
+          <div class="plan-item-content">
+            <!-- Source icon: Community-C for candidates, YEH favicon, fork-knife for user -->
+            <div class="source-icon">
+              <img *ngIf="getPlanIcon(plan)" [src]="getPlanIcon(plan)" alt="" class="source-icon-img">
+              <mat-icon *ngIf="!getPlanIcon(plan)">restaurant</mat-icon>
+            </div>
+            <div class="plan-thumbnail">
+              <img *ngIf="plan.mealImageThumbnail" [src]="plan.mealImageThumbnail" alt="" class="thumbnail-img">
+              <div *ngIf="!plan.mealImageThumbnail" class="thumbnail-placeholder">
+                <mat-icon>restaurant</mat-icon>
+              </div>
+            </div>
+            <div class="plan-info">
+              <span class="plan-name">{{ truncateDescription(plan.name, 30) }}</span>
+              <span class="plan-meta">{{ plan.totalCalories ?? 0 }} cal &middot; {{ plan.userName ?? 'User' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: detail panel -->
+    <div class="details-panel" *ngIf="selectedPlan">
+      <h2>{{ selectedPlan.name }}</h2>
+
+      <!-- Metadata row -->
+      <div class="metadata-row">
+        <span class="meta-item"><strong>ID:</strong> {{ selectedPlan.id }}</span>
+        <span class="meta-item"><strong>Cal:</strong> {{ selectedPlan.totalCalories ?? 0 }}</span>
+        <span class="meta-item"><strong>Protein:</strong> {{ selectedPlan.totalProteinG?.toFixed(0) ?? 0 }}g</span>
+        <span class="meta-item"><strong>Fat:</strong> {{ selectedPlan.totalFatG?.toFixed(0) ?? 0 }}g</span>
+        <span class="meta-item"><strong>Carb:</strong> {{ selectedPlan.totalCarbG?.toFixed(0) ?? 0 }}g</span>
+        <span class="meta-item"><strong>Servings:</strong> {{ selectedPlan.servings ?? 1 }}</span>
+      </div>
+
+      <!-- Status checkboxes + save -->
+      <div class="share-row">
+        <mat-checkbox [formControl]="isYEHControl" (change)="onIsYEHChange()">YEH Approved</mat-checkbox>
+        <span class="community-label">Community:</span>
+        <mat-checkbox [formControl]="shareCandidateControl" (change)="onShareCandidateChange()">Candidate</mat-checkbox>
+        <mat-checkbox [formControl]="shareApprovedControl" (change)="onShareApprovedChange()">Approved</mat-checkbox>
+        <button mat-flat-button class="save-btn" (click)="saveApproval()" [disabled]="!hasShareChanges || isSaving">
+          <mat-icon>check</mat-icon> Save
+        </button>
+      </div>
+
+      <!-- Meal Image -->
+      <div class="image-section" *ngIf="selectedPlan.mealImage">
+        <label>Meal Image</label>
+        <img [src]="selectedPlan.mealImage" alt="" class="meal-image-preview">
+      </div>
+
+      <!-- Video Link -->
+      <div class="link-section">
+        <label>Video Link</label>
+        <div class="link-controls">
+          <input matInput [formControl]="videoLinkControl" placeholder="https://youtube.com/...">
+          <button mat-icon-button (click)="saveVideoLink()" [disabled]="!hasVideoLinkChanges() || isSaving" matTooltip="Save video link">
+            <mat-icon>check</mat-icon>
+          </button>
+          <button mat-icon-button (click)="openVideoLink()" [disabled]="!videoLinkControl.value" matTooltip="Open in browser">
+            <mat-icon>open_in_new</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recipe Link -->
+      <div class="link-section">
+        <label>Recipe Link</label>
+        <div class="link-controls">
+          <input matInput [formControl]="recipeLinkControl" placeholder="https://recipe-site.com/...">
+          <button mat-icon-button (click)="saveRecipeLink()" [disabled]="!hasRecipeLinkChanges() || isSaving" matTooltip="Save recipe link">
+            <mat-icon>check</mat-icon>
+          </button>
+          <button mat-icon-button (click)="openRecipeLink()" [disabled]="!recipeLinkControl.value" matTooltip="Open in browser">
+            <mat-icon>open_in_new</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- User info -->
+      <div class="user-info-row" *ngIf="selectedPlan.userName || selectedPlan.userEmail">
+        <span class="meta-item"><strong>User:</strong> {{ selectedPlan.userName }}</span>
+        <span class="meta-item" *ngIf="selectedPlan.userEmail"><strong>Email:</strong> {{ selectedPlan.userEmail }}</span>
+      </div>
+
+      <!-- Meal items list -->
+      <div class="items-section">
+        <label>Meal Items ({{ selectedPlan.items?.length ?? 0 }})</label>
+        <div class="items-list">
+          <div *ngFor="let item of selectedPlan.items" class="meal-item">
+            <div class="item-thumbnail">
+              <img *ngIf="item.foodImageThumbnail" [src]="item.foodImageThumbnail" alt="" class="item-thumb-img">
+              <div *ngIf="!item.foodImageThumbnail" class="item-thumb-placeholder"></div>
+            </div>
+            <div class="item-details">
+              <span class="item-name">{{ item.shortDescription || item.foodName }}</span>
+              <span class="item-quantity">{{ item.quantity }} {{ item.unit }}</span>
+            </div>
+            <span class="item-calories">{{ item.calories ?? 0 }} cal</span>
+          </div>
+          <div *ngIf="!selectedPlan.items?.length" class="no-items">No items in this meal plan</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No selection placeholder -->
+    <div class="details-panel placeholder" *ngIf="!selectedPlan">
+      <p>Select a meal plan to review</p>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="mealPlans.length === 0 && !isLoading" class="empty-state">
+    <mat-icon>restaurant_menu</mat-icon>
+    <p>No meal plans found. Adjust filters and click apply.</p>
+  </div>
+</div>
