@@ -215,6 +215,35 @@ export class RegiApiService {
   }
 
   // ========================================
+  // MEAL PLAN ADMIN ENDPOINTS
+  // ========================================
+
+  getMealPlanShareCandidates(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/meal/candidates`);
+  }
+
+  // Get all meal plans (admin) with optional filters
+  getAdminMealPlans(filters?: { name?: string; community?: boolean; yeh?: boolean }): Observable<any> {
+    let params = new HttpParams();
+    if (filters?.name) params = params.set('name', filters.name);
+    if (filters?.community) params = params.set('community', 'true');
+    if (filters?.yeh) params = params.set('yeh', 'true');
+    return this.http.get<any>(`${this.baseUrl}/admin/meals`, { params });
+  }
+
+  getAdminMealPlan(mealId: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/meal/${mealId}`);
+  }
+
+  updateAdminMealPlan(mealId: number, update: any): Observable<any> {
+    return this.http.put<any>(`${this.baseUrl}/meal/${mealId}`, update);
+  }
+
+  setMealPlanShareApproval(mealId: number, approved: boolean): Observable<any> {
+    return this.http.patch<any>(`${this.baseUrl}/meal/${mealId}/approve`, { approved });
+  }
+
+  // ========================================
   // COMMAND ADMIN: WIDGETS & COMMANDS
   // Whole-collection replace semantics on both POSTs — the server reconciles
   // by absence (anything not in the payload is deleted in the same tx). Callers

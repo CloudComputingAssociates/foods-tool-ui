@@ -33,6 +33,7 @@ import { RegiApiService } from './services/regi-api.service';
 import { UriListComponent } from './uri-list/uri-list.component';
 import { ImageUploadComponent } from './image-upload/image-upload.component';
 import { FatsecretCompareComponent } from './fatsecret-compare/fatsecret-compare.component';
+import { MealsAdminComponent } from './meals-admin/meals-admin.component';
 import { CommandWidgetComponent } from './command-widget/command-widget.component';
 import { SafePipe } from './pipes/safe.pipe';
 
@@ -44,6 +45,7 @@ import { SafePipe } from './pipes/safe.pipe';
     UserFoodsAdminComponent,
     ImageUploadComponent,
     FatsecretCompareComponent,
+    MealsAdminComponent,
     CommandWidgetComponent,
     SafePipe
   ],
