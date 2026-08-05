@@ -6,6 +6,58 @@
   gap: 12px;
 }
 
+// Recipe PDF viewer modal
+.pdf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdf-modal {
+  width: 92vw;
+  height: 92vh;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pdf-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #ddd;
+
+  .pdf-modal-title {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  .pdf-header-btn {
+    display: inline-flex;
+    align-items: center;
+    color: #555;
+  }
+}
+
+.pdf-modal-body {
+  flex: 1;
+  overflow: auto;
+
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+}
+
 // Filter bar
 .filter-bar {
   display: flex;
@@ -111,6 +163,14 @@
 
   &[data-source="regi"] mat-icon { color: #1976d2; }
   &[data-source="community-candidate"] mat-icon { color: #f57c00; }
+
+  .source-letter {
+    font-size: 18px;
+    line-height: 18px;
+    font-weight: 800;
+    color: #000;
+    font-family: Arial, sans-serif;
+  }
 }
 
 .plan-thumbnail {
@@ -361,14 +421,89 @@
   overflow-y: auto;
 }
 
+.meal-item-wrap {
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child { border-bottom: none; }
+}
+
 .meal-item {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border-bottom: 1px solid #f0f0f0;
 
-  &:last-child { border-bottom: none; }
+  &.editing { background: #f1f8ff; }
+
+  .item-edit-btn {
+    flex-shrink: 0;
+    color: #1976d2;
+  }
+}
+
+// Inline serving editor
+.item-editor {
+  padding: 10px 12px 12px;
+  background: #f1f8ff;
+  border-top: 1px dashed #cfe3f5;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+  }
+
+  input,
+  select {
+    padding: 6px 8px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+
+    &:focus { outline: none; border-color: #1976d2; }
+    &[readonly] { background: #f0f0f0; color: #777; }
+  }
+}
+
+.editor-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #b26a00;
+
+  mat-icon {
+    font-size: 15px;
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+
+  .save-btn {
+    background-color: #4caf50 !important;
+    color: #fff !important;
+    font-size: 12px;
+  }
 }
 
 .item-thumbnail {

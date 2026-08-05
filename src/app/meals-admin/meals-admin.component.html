@@ -34,7 +34,10 @@
              (click)="selectPlan(plan)">
           <div class="plan-item-content">
             <div class="source-icon" [attr.data-source]="getPlanSource(plan)">
-              <mat-icon [matTooltip]="getSourceTooltip(plan)">{{ getSourceIcon(plan) }}</mat-icon>
+              <span *ngIf="getPlanSource(plan) === 'community-approved'" class="source-letter"
+                    [matTooltip]="getSourceTooltip(plan)">C</span>
+              <mat-icon *ngIf="getPlanSource(plan) !== 'community-approved'"
+                        [matTooltip]="getSourceTooltip(plan)">{{ getSourceIcon(plan) }}</mat-icon>
             </div>
             <div class="plan-thumbnail">
               <img *ngIf="plan.mealImageThumbnail" [src]="plan.mealImageThumbnail" alt="" class="thumbnail-img">
@@ -125,7 +128,8 @@
             <mat-icon>check</mat-icon>
           </button>
         </div>
-        <a *ngIf="selectedPlan.recipeLink" class="active-link" [href]="selectedPlan.recipeLink" target="_blank" rel="noopener">
+        <a *ngIf="selectedPlan.recipeLink" class="active-link" [href]="selectedPlan.recipeLink"
+           (click)="openPdf(selectedPlan.recipeLink); $event.preventDefault()">
           <mat-icon>picture_as_pdf</mat-icon> {{ selectedPlan.recipeLink }}
         </a>
       </div>
@@ -142,16 +146,62 @@
       <div class="items-section">
         <label>Meal Items ({{ selectedPlan.items?.length ?? 0 }})</label>
         <div class="items-list">
-          <div *ngFor="let item of selectedPlan.items" class="meal-item">
-            <div class="item-thumbnail">
-              <img *ngIf="itemThumbnail(item)" [src]="itemThumbnail(item)" alt="" class="item-thumb-img">
-              <div *ngIf="!itemThumbnail(item)" class="item-thumb-placeholder"></div>
+          <div *ngFor="let item of selectedPlan.items" class="meal-item-wrap">
+            <div class="meal-item" [class.editing]="editingItem?.id === item.id">
+              <div class="item-thumbnail">
+                <img *ngIf="itemThumbnail(item)" [src]="itemThumbnail(item)" alt="" class="item-thumb-img">
+                <div *ngIf="!itemThumbnail(item)" class="item-thumb-placeholder"></div>
+              </div>
+              <div class="item-details">
+                <span class="item-name">{{ itemName(item) }}</span>
+                <span class="item-quantity">{{ item.quantity }} {{ item.unit }} &middot; {{ item.itemRole }}</span>
+              </div>
+              <span class="item-calories">{{ item.calories ?? 0 }} cal</span>
+              <button mat-icon-button class="item-edit-btn" (click)="openItemEditor(item)"
+                      [disabled]="item.id == null" matTooltip="Edit amount / unit / serving">
+                <mat-icon>edit</mat-icon>
+              </button>
             </div>
-            <div class="item-details">
-              <span class="item-name">{{ itemName(item) }}</span>
-              <span class="item-quantity">{{ item.quantity }} {{ item.unit }} &middot; {{ item.itemRole }}</span>
+
+            <!-- Inline serving editor -->
+            <div class="item-editor" *ngIf="editingItem?.id === item.id">
+              <div class="editor-grid">
+                <div class="editor-field">
+                  <label>Amount</label>
+                  <input type="number" min="0" step="0.25" [formControl]="itemAmountControl">
+                </div>
+                <div class="editor-field">
+                  <label>Serving Unit</label>
+                  <select *ngIf="!isAddingUnit" [formControl]="itemUnitControl"
+                          (change)="onUnitSelectionChange($any($event.target).value)">
+                    <option *ngFor="let u of servingUnitOptions" [value]="u">{{ u }}</option>
+                    <option [value]="ADD_NEW_UNIT">Add new…</option>
+                  </select>
+                  <input #newUnitInput *ngIf="isAddingUnit" type="text" [formControl]="itemUnitControl"
+                         placeholder="e.g. slice, pickle" (blur)="commitNewUnit()" (keyup.enter)="commitNewUnit()">
+                </div>
+                <div class="editor-field">
+                  <label>Grams / Unit</label>
+                  <input type="number" min="0" step="0.01" [formControl]="itemGramsPerUnitControl"
+                         [readonly]="isWeightUnit(itemUnitControl.value)"
+                         [matTooltip]="isWeightUnit(itemUnitControl.value) ? 'Auto-filled for weight units' : ''">
+                </div>
+                <div class="editor-field">
+                  <label>Serving Size</label>
+                  <input type="number" min="0" step="0.25" [formControl]="itemServingSizeControl">
+                </div>
+              </div>
+              <p class="editor-hint" *ngIf="editingItem?.food?.foodSource === 'food'">
+                <mat-icon>public</mat-icon>
+                Serving-definition changes update the <strong>shared</strong> catalog food (all users) — you'll be asked to confirm.
+              </p>
+              <div class="editor-actions">
+                <button mat-flat-button class="save-btn" (click)="saveItem()" [disabled]="isSaving">
+                  <mat-icon>check</mat-icon> Save
+                </button>
+                <button mat-button (click)="closeItemEditor()" [disabled]="isSaving">Cancel</button>
+              </div>
             </div>
-            <span class="item-calories">{{ item.calories ?? 0 }} cal</span>
           </div>
           <div *ngIf="!selectedPlan.items?.length" class="no-items">No items in this meal</div>
         </div>
@@ -168,5 +218,24 @@
   <div *ngIf="mealPlans.length === 0 && !isLoading" class="empty-state">
     <mat-icon>restaurant_menu</mat-icon>
     <p>No meals found. Adjust filters and click apply.</p>
+  </div>
+
+  <!-- Recipe PDF viewer modal -->
+  <div class="pdf-modal-overlay" *ngIf="pdfViewerUrl" (click)="closePdf()">
+    <div class="pdf-modal" (click)="$event.stopPropagation()">
+      <div class="pdf-modal-header">
+        <mat-icon>picture_as_pdf</mat-icon>
+        <span class="pdf-modal-title">Recipe</span>
+        <a [href]="pdfRawUrl" target="_blank" rel="noopener" matTooltip="Open in new tab" class="pdf-header-btn">
+          <mat-icon>open_in_new</mat-icon>
+        </a>
+        <button mat-icon-button (click)="closePdf()" matTooltip="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="pdf-modal-body">
+        <iframe [src]="pdfViewerUrl" title="Recipe PDF"></iframe>
+      </div>
+    </div>
   </div>
 </div>

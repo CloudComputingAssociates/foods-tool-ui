@@ -245,6 +245,15 @@ export class RegiApiService {
     return this.http.patch<any>(`${this.baseUrl}/meal/${mealId}/approve`, { approved });
   }
 
+  // Partial update of a single meal item (PUT /api/meal/{id}/items/{itemId}).
+  updateMealItem(
+    mealId: number,
+    itemId: number,
+    fields: { quantity?: number; unit?: string; itemRole?: string; isTracked?: boolean; sortOrder?: number }
+  ): Observable<any> {
+    return this.http.put<any>(`${this.baseUrl}/meal/${mealId}/items/${itemId}`, fields);
+  }
+
   // ========================================
   // COMMAND ADMIN: WIDGETS & COMMANDS
   // Whole-collection replace semantics on both POSTs — the server reconciles
