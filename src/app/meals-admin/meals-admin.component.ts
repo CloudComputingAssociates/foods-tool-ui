@@ -2,7 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RegiApiService } from '../services/regi-api.service';
-import { MealPlanSummary, MealPlanSource } from '../models/meal-plan.model';
+import { Meal, MealItem, MealSummary } from '../models/meal-plan.model';
+
+type PlanSource = 'regi' | 'community-approved' | 'community-candidate' | 'user';
 
 @Component({
   selector: 'app-meals-admin',
@@ -12,19 +14,19 @@ import { MealPlanSummary, MealPlanSource } from '../models/meal-plan.model';
 export class MealsAdminComponent implements OnInit {
   // Filter controls
   nameSearchControl = new FormControl('');
+  emailSearchControl = new FormControl('');
   communityFilterControl = new FormControl<boolean>(false);
-  yehFilterControl = new FormControl<boolean>(false);
+  regiFilterControl = new FormControl<boolean>(false);
 
   // State
-  mealPlans: MealPlanSummary[] = [];
-  selectedPlan: MealPlanSummary | null = null;
+  mealPlans: MealSummary[] = [];
+  selectedPlan: Meal | null = null;
   isLoading = false;
   isSaving = false;
 
   // Detail form controls
+  regiApprovedControl = new FormControl<boolean>(false);
   shareCandidateControl = new FormControl<boolean>(false);
-  shareApprovedControl = new FormControl<boolean>(false);
-  isYEHControl = new FormControl<boolean>(false);
   videoLinkControl = new FormControl<string | null>(null);
   recipeLinkControl = new FormControl<string | null>(null);
 
@@ -50,13 +52,13 @@ export class MealsAdminComponent implements OnInit {
     this.selectedPlan = null;
 
     const name = this.nameSearchControl.value?.trim() || undefined;
+    const email = this.emailSearchControl.value?.trim() || undefined;
     const community = this.communityFilterControl.value || false;
-    const yeh = this.yehFilterControl.value || false;
+    const yeh = this.regiFilterControl.value || false;
 
-    this.apiService.getAdminMealPlans({ name, community, yeh }).subscribe({
+    this.apiService.getAdminMealPlans({ name, email, community, yeh }).subscribe({
       next: (data: any) => {
-        const plans: MealPlanSummary[] = Array.isArray(data) ? data : data?.meals ?? data?.data ?? [];
-        // Sort alphabetically by name
+        const plans: MealSummary[] = Array.isArray(data) ? data : data?.meals ?? data?.data ?? [];
         plans.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
         this.mealPlans = plans;
         this.isLoading = false;
@@ -70,74 +72,121 @@ export class MealsAdminComponent implements OnInit {
     });
   }
 
-  getPlanSource(plan: MealPlanSummary): MealPlanSource {
-    if (plan.shareApproved) return 'community';
-    if (plan.isYeh) return 'yeh';
+  getPlanSource(plan: MealSummary): PlanSource {
+    if (plan.isRegiApproved) return 'regi';
+    if (plan.shareApproved) return 'community-approved';
+    if (plan.shareCandidate) return 'community-candidate';
     return 'user';
   }
 
-  getPlanIcon(plan: MealPlanSummary): string | null {
-    if (plan.shareCandidate || plan.shareApproved) return 'Community-C.ico';
-    if (plan.isYeh) return 'favicon.ico';
-    return null;
+  getSourceIcon(plan: MealSummary): string {
+    switch (this.getPlanSource(plan)) {
+      case 'regi': return 'verified';
+      case 'community-approved': return 'check_circle';
+      case 'community-candidate': return 'groups';
+      default: return 'restaurant';
+    }
   }
 
-  selectPlan(plan: MealPlanSummary): void {
-    this.selectedPlan = plan;
+  getSourceTooltip(plan: MealSummary): string {
+    switch (this.getPlanSource(plan)) {
+      case 'regi': return 'RegiApproved';
+      case 'community-approved': return 'Community approved';
+      case 'community-candidate': return 'Community candidate';
+      default: return 'User meal';
+    }
+  }
 
+  selectPlan(plan: MealSummary): void {
     this.apiService.getAdminMealPlan(plan.id).subscribe({
-      next: (fullPlan: any) => {
-        this.selectedPlan = { ...plan, ...fullPlan, items: fullPlan.items ?? [] };
-        this.populateFormFields(this.selectedPlan!);
+      next: (fullPlan: Meal) => {
+        this.selectedPlan = { ...fullPlan, items: fullPlan.items ?? [] };
+        this.populateFormFields(this.selectedPlan);
       },
       error: () => {
-        this.populateFormFields(plan);
+        this.snackBar.open('Failed to load meal detail', 'Dismiss', { duration: 3000 });
       }
     });
   }
 
-  private populateFormFields(plan: MealPlanSummary): void {
+  private populateFormFields(plan: Meal): void {
+    this.regiApprovedControl.setValue(plan.isRegiApproved ?? false);
     this.shareCandidateControl.setValue(plan.shareCandidate ?? false);
-    this.shareApprovedControl.setValue(plan.shareApproved ?? false);
-    this.isYEHControl.setValue(plan.isYeh ?? false);
     this.videoLinkControl.setValue(plan.prepVideoLink ?? null);
     this.recipeLinkControl.setValue(plan.recipeLink ?? null);
     this.originalVideoLink = plan.prepVideoLink ?? null;
     this.originalRecipeLink = plan.recipeLink ?? null;
-
-    this.videoLinkControl.enable();
-    this.recipeLinkControl.enable();
-    this.shareCandidateControl.enable();
-    this.shareApprovedControl.enable();
-    this.isYEHControl.enable();
   }
 
-  onShareApprovedChange(): void {
-    if (this.shareApprovedControl.value) {
+  // ---- Curation flags: isRegiApproved + shareCandidate via PUT /api/meal/{id} (admin-gated) ----
+
+  get hasFlagChanges(): boolean {
+    if (!this.selectedPlan) return false;
+    return this.regiApprovedControl.value !== this.selectedPlan.isRegiApproved ||
+           this.shareCandidateControl.value !== this.selectedPlan.shareCandidate;
+  }
+
+  async saveFlags(): Promise<void> {
+    if (!this.selectedPlan || !this.hasFlagChanges) return;
+    const update: { isRegiApproved?: boolean; shareCandidate?: boolean } = {};
+    if (this.regiApprovedControl.value !== this.selectedPlan.isRegiApproved) {
+      update.isRegiApproved = this.regiApprovedControl.value ?? false;
+    }
+    if (this.shareCandidateControl.value !== this.selectedPlan.shareCandidate) {
+      update.shareCandidate = this.shareCandidateControl.value ?? false;
+    }
+
+    this.isSaving = true;
+    try {
+      await this.apiService.updateAdminMealPlan(this.selectedPlan.id, update).toPromise();
+      if (update.isRegiApproved !== undefined) this.selectedPlan.isRegiApproved = update.isRegiApproved;
+      if (update.shareCandidate !== undefined) this.selectedPlan.shareCandidate = update.shareCandidate;
+      this.snackBar.open('Flags saved', 'Dismiss', { duration: 2000 });
+      this.loadMealPlans();
+    } catch {
+      this.snackBar.open('Failed to save flags', 'Dismiss', { duration: 3000 });
+    }
+    this.isSaving = false;
+  }
+
+  // ---- Community approval: shareApproved via PATCH /api/meal/{id}/approve ----
+
+  get communityState(): 'approved' | 'candidate' | 'none' {
+    if (!this.selectedPlan) return 'none';
+    if (this.selectedPlan.shareApproved) return 'approved';
+    if (this.selectedPlan.shareCandidate) return 'candidate';
+    return 'none';
+  }
+
+  /** Toggle community share approval. The server sets ShareApproved and clears ShareCandidate. */
+  async toggleShareApproval(): Promise<void> {
+    if (!this.selectedPlan) return;
+    const next = !this.selectedPlan.shareApproved;
+
+    if (next) {
       const confirmed = window.confirm(
-        'Are these links and pictures reviewed?\n\n- Product Image\n- Video Link\n- Recipe Link'
+        'Approve this meal for the community?\n\nConfirm these are reviewed:\n- Meal Image\n- Video Link\n- Recipe Link'
       );
-      if (!confirmed) {
-        this.shareApprovedControl.setValue(false);
-        return;
+      if (!confirmed) return;
+    }
+
+    this.isSaving = true;
+    try {
+      await this.apiService.setMealPlanShareApproval(this.selectedPlan.id, next).toPromise();
+      this.selectedPlan.shareApproved = next;
+      if (next) {
+        this.selectedPlan.shareCandidate = false;
+        this.shareCandidateControl.setValue(false);
       }
-      this.shareCandidateControl.setValue(false);
-      this.isYEHControl.setValue(false);
+      this.snackBar.open(next ? 'Approved for community' : 'Approval revoked', 'Dismiss', { duration: 2000 });
+      this.loadMealPlans();
+    } catch {
+      this.snackBar.open('Failed to update approval', 'Dismiss', { duration: 3000 });
     }
+    this.isSaving = false;
   }
 
-  onShareCandidateChange(): void {
-    if (this.shareCandidateControl.value) {
-      this.isYEHControl.setValue(false);
-    }
-  }
-
-  onIsYEHChange(): void {
-    if (this.isYEHControl.value) {
-      this.shareCandidateControl.setValue(false);
-      this.shareApprovedControl.setValue(false);
-    }
-  }
+  // ---- Links ----
 
   hasVideoLinkChanges(): boolean {
     return this.videoLinkControl.value !== this.originalVideoLink;
@@ -145,27 +194,6 @@ export class MealsAdminComponent implements OnInit {
 
   hasRecipeLinkChanges(): boolean {
     return this.recipeLinkControl.value !== this.originalRecipeLink;
-  }
-
-  get hasShareChanges(): boolean {
-    if (!this.selectedPlan) return false;
-    return this.shareApprovedControl.value !== this.selectedPlan.shareApproved ||
-           this.shareCandidateControl.value !== this.selectedPlan.shareCandidate ||
-           this.isYEHControl.value !== (this.selectedPlan.isYeh ?? false);
-  }
-
-  get isApproved(): boolean {
-    return this.selectedPlan?.shareApproved ?? false;
-  }
-
-  openVideoLink(): void {
-    const url = this.videoLinkControl.value;
-    if (url) window.open(url, '_blank', 'noopener');
-  }
-
-  openRecipeLink(): void {
-    const url = this.recipeLinkControl.value;
-    if (url) window.open(url, '_blank', 'noopener');
   }
 
   async saveVideoLink(): Promise<void> {
@@ -200,48 +228,14 @@ export class MealsAdminComponent implements OnInit {
     this.isSaving = false;
   }
 
-  async saveApproval(): Promise<void> {
-    if (!this.selectedPlan || !this.hasShareChanges) return;
-    this.isSaving = true;
-    try {
-      const update: any = {};
+  // ---- Item display helpers (MealItem nests the resolved food under `food`) ----
 
-      if (this.isYEHControl.value !== (this.selectedPlan.isYeh ?? false)) {
-        update.isYEH = this.isYEHControl.value;
-        this.selectedPlan.isYeh = this.isYEHControl.value ?? false;
-      }
+  itemName(item: MealItem): string {
+    return item.food?.shortDescription || item.foodName;
+  }
 
-      if (this.shareApprovedControl.value !== this.selectedPlan.shareApproved) {
-        update.shareApproved = this.shareApprovedControl.value;
-        // Use the approve endpoint for share approval
-        await this.apiService.setMealPlanShareApproval(
-          this.selectedPlan.id,
-          this.shareApprovedControl.value ?? false
-        ).toPromise();
-        this.selectedPlan.shareApproved = this.shareApprovedControl.value ?? false;
-        if (this.shareApprovedControl.value) {
-          this.selectedPlan.shareCandidate = false;
-          this.shareCandidateControl.setValue(false);
-        }
-        delete update.shareApproved; // already handled by approve endpoint
-      }
-
-      if (this.shareCandidateControl.value !== this.selectedPlan.shareCandidate) {
-        update.shareCandidate = this.shareCandidateControl.value;
-        this.selectedPlan.shareCandidate = this.shareCandidateControl.value ?? false;
-      }
-
-      // Send remaining updates via the meal update endpoint
-      if (Object.keys(update).length > 0) {
-        await this.apiService.updateAdminMealPlan(this.selectedPlan.id, update).toPromise();
-      }
-
-      this.snackBar.open('Saved', 'Dismiss', { duration: 2000 });
-      this.loadMealPlans();
-    } catch {
-      this.snackBar.open('Failed to save approval', 'Dismiss', { duration: 3000 });
-    }
-    this.isSaving = false;
+  itemThumbnail(item: MealItem): string | null {
+    return item.food?.foodImageThumbnail ?? null;
   }
 
   truncateDescription(desc?: string | null, maxLen = 40): string {

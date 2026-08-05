@@ -4,11 +4,15 @@
   <div class="filter-bar">
     <span class="filter-title">Filters</span>
     <mat-form-field appearance="fill" class="search-field">
-      <mat-label>Meal Plan Name</mat-label>
-      <input matInput [formControl]="nameSearchControl" (keyup.enter)="applyFilters()" placeholder="Search by name...">
+      <mat-label>Meal Name</mat-label>
+      <input matInput [formControl]="nameSearchControl" (keyup.enter)="applyFilters()" placeholder="Meal name...">
     </mat-form-field>
-    <mat-checkbox [formControl]="communityFilterControl">Community Candidate</mat-checkbox>
-    <mat-checkbox [formControl]="yehFilterControl">YEH Approved</mat-checkbox>
+    <mat-form-field appearance="fill" class="search-field">
+      <mat-label>User Email</mat-label>
+      <input matInput [formControl]="emailSearchControl" (keyup.enter)="applyFilters()" placeholder="user@example.com">
+    </mat-form-field>
+    <mat-checkbox [formControl]="regiFilterControl">RegiApproved</mat-checkbox>
+    <mat-checkbox [formControl]="communityFilterControl">Community</mat-checkbox>
     <button mat-flat-button class="apply-btn" (click)="applyFilters()" [disabled]="isLoading">
       <mat-icon>keyboard_return</mat-icon>
     </button>
@@ -17,7 +21,7 @@
   <!-- Results layout -->
   <div class="results-layout" *ngIf="mealPlans.length > 0 || isLoading">
 
-    <!-- Left sidebar: meal plan list -->
+    <!-- Left sidebar: meal list -->
     <div class="results-sidebar">
       <div class="plan-list">
         <div *ngIf="isLoading" class="loading-row">
@@ -29,10 +33,8 @@
              [class.selected]="selectedPlan?.id === plan.id"
              (click)="selectPlan(plan)">
           <div class="plan-item-content">
-            <!-- Source icon: Community-C for candidates, YEH favicon, fork-knife for user -->
-            <div class="source-icon">
-              <img *ngIf="getPlanIcon(plan)" [src]="getPlanIcon(plan)" alt="" class="source-icon-img">
-              <mat-icon *ngIf="!getPlanIcon(plan)">restaurant</mat-icon>
+            <div class="source-icon" [attr.data-source]="getPlanSource(plan)">
+              <mat-icon [matTooltip]="getSourceTooltip(plan)">{{ getSourceIcon(plan) }}</mat-icon>
             </div>
             <div class="plan-thumbnail">
               <img *ngIf="plan.mealImageThumbnail" [src]="plan.mealImageThumbnail" alt="" class="thumbnail-img">
@@ -42,7 +44,7 @@
             </div>
             <div class="plan-info">
               <span class="plan-name">{{ truncateDescription(plan.name, 30) }}</span>
-              <span class="plan-meta">{{ plan.totalCalories ?? 0 }} cal &middot; {{ plan.userName ?? 'User' }}</span>
+              <span class="plan-meta">{{ plan.totalCalories ?? 0 }} cal &middot; {{ plan.userEmail || plan.userName || 'User' }}</span>
             </div>
           </div>
         </div>
@@ -63,14 +65,34 @@
         <span class="meta-item"><strong>Servings:</strong> {{ selectedPlan.servings ?? 1 }}</span>
       </div>
 
-      <!-- Status checkboxes + save -->
-      <div class="share-row">
-        <mat-checkbox [formControl]="isYEHControl" (change)="onIsYEHChange()">YEH Approved</mat-checkbox>
-        <span class="community-label">Community:</span>
-        <mat-checkbox [formControl]="shareCandidateControl" (change)="onShareCandidateChange()">Candidate</mat-checkbox>
-        <mat-checkbox [formControl]="shareApprovedControl" (change)="onShareApprovedChange()">Approved</mat-checkbox>
-        <button mat-flat-button class="save-btn" (click)="saveApproval()" [disabled]="!hasShareChanges || isSaving">
-          <mat-icon>check</mat-icon> Save
+      <!-- Curation flags (RegiApproved + Community candidate) -->
+      <div class="status-row">
+        <mat-checkbox [formControl]="regiApprovedControl">RegiApproved</mat-checkbox>
+        <mat-checkbox [formControl]="shareCandidateControl">Community candidate</mat-checkbox>
+        <button mat-flat-button class="save-btn"
+                (click)="saveFlags()" [disabled]="!hasFlagChanges || isSaving">
+          <mat-icon>check</mat-icon> Save flags
+        </button>
+      </div>
+
+      <!-- Community approval (shareApproved — separate /approve endpoint) -->
+      <div class="status-row">
+        <span class="status-chip"
+              [class.on]="communityState !== 'none'"
+              [class.approved]="communityState === 'approved'">
+          <mat-icon>groups</mat-icon>
+          Community:
+          <ng-container [ngSwitch]="communityState">
+            <span *ngSwitchCase="'approved'">Approved</span>
+            <span *ngSwitchCase="'candidate'">Candidate</span>
+            <span *ngSwitchDefault>—</span>
+          </ng-container>
+        </span>
+        <button mat-flat-button class="approve-btn"
+                [class.revoke]="selectedPlan.shareApproved"
+                (click)="toggleShareApproval()" [disabled]="isSaving">
+          <mat-icon>{{ selectedPlan.shareApproved ? 'undo' : 'check' }}</mat-icon>
+          {{ selectedPlan.shareApproved ? 'Revoke approval' : 'Approve for community' }}
         </button>
       </div>
 
@@ -88,30 +110,32 @@
           <button mat-icon-button (click)="saveVideoLink()" [disabled]="!hasVideoLinkChanges() || isSaving" matTooltip="Save video link">
             <mat-icon>check</mat-icon>
           </button>
-          <button mat-icon-button (click)="openVideoLink()" [disabled]="!videoLinkControl.value" matTooltip="Open in browser">
-            <mat-icon>open_in_new</mat-icon>
-          </button>
         </div>
+        <a *ngIf="selectedPlan.prepVideoLink" class="active-link" [href]="selectedPlan.prepVideoLink" target="_blank" rel="noopener">
+          <mat-icon>play_circle</mat-icon> {{ selectedPlan.prepVideoLink }}
+        </a>
       </div>
 
-      <!-- Recipe Link -->
+      <!-- Recipe Link (PDF / external) -->
       <div class="link-section">
         <label>Recipe Link</label>
         <div class="link-controls">
-          <input matInput [formControl]="recipeLinkControl" placeholder="https://recipe-site.com/...">
+          <input matInput [formControl]="recipeLinkControl" placeholder="https://.../recipe.pdf">
           <button mat-icon-button (click)="saveRecipeLink()" [disabled]="!hasRecipeLinkChanges() || isSaving" matTooltip="Save recipe link">
             <mat-icon>check</mat-icon>
           </button>
-          <button mat-icon-button (click)="openRecipeLink()" [disabled]="!recipeLinkControl.value" matTooltip="Open in browser">
-            <mat-icon>open_in_new</mat-icon>
-          </button>
         </div>
+        <a *ngIf="selectedPlan.recipeLink" class="active-link" [href]="selectedPlan.recipeLink" target="_blank" rel="noopener">
+          <mat-icon>picture_as_pdf</mat-icon> {{ selectedPlan.recipeLink }}
+        </a>
       </div>
 
       <!-- User info -->
-      <div class="user-info-row" *ngIf="selectedPlan.userName || selectedPlan.userEmail">
-        <span class="meta-item"><strong>User:</strong> {{ selectedPlan.userName }}</span>
-        <span class="meta-item" *ngIf="selectedPlan.userEmail"><strong>Email:</strong> {{ selectedPlan.userEmail }}</span>
+      <div class="user-info-row" *ngIf="selectedPlan.name">
+        <span class="meta-item"><strong>Meal #:</strong> {{ selectedPlan.mealSeqNum }}</span>
+        <span class="meta-item" *ngIf="selectedPlan.primaryProteinName">
+          <strong>Primary:</strong> {{ selectedPlan.primaryProteinName }}
+        </span>
       </div>
 
       <!-- Meal items list -->
@@ -120,29 +144,29 @@
         <div class="items-list">
           <div *ngFor="let item of selectedPlan.items" class="meal-item">
             <div class="item-thumbnail">
-              <img *ngIf="item.foodImageThumbnail" [src]="item.foodImageThumbnail" alt="" class="item-thumb-img">
-              <div *ngIf="!item.foodImageThumbnail" class="item-thumb-placeholder"></div>
+              <img *ngIf="itemThumbnail(item)" [src]="itemThumbnail(item)" alt="" class="item-thumb-img">
+              <div *ngIf="!itemThumbnail(item)" class="item-thumb-placeholder"></div>
             </div>
             <div class="item-details">
-              <span class="item-name">{{ item.shortDescription || item.foodName }}</span>
-              <span class="item-quantity">{{ item.quantity }} {{ item.unit }}</span>
+              <span class="item-name">{{ itemName(item) }}</span>
+              <span class="item-quantity">{{ item.quantity }} {{ item.unit }} &middot; {{ item.itemRole }}</span>
             </div>
             <span class="item-calories">{{ item.calories ?? 0 }} cal</span>
           </div>
-          <div *ngIf="!selectedPlan.items?.length" class="no-items">No items in this meal plan</div>
+          <div *ngIf="!selectedPlan.items?.length" class="no-items">No items in this meal</div>
         </div>
       </div>
     </div>
 
     <!-- No selection placeholder -->
     <div class="details-panel placeholder" *ngIf="!selectedPlan">
-      <p>Select a meal plan to review</p>
+      <p>Select a meal to review</p>
     </div>
   </div>
 
   <!-- Empty state -->
   <div *ngIf="mealPlans.length === 0 && !isLoading" class="empty-state">
     <mat-icon>restaurant_menu</mat-icon>
-    <p>No meal plans found. Adjust filters and click apply.</p>
+    <p>No meals found. Adjust filters and click apply.</p>
   </div>
 </div>

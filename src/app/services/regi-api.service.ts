@@ -222,10 +222,12 @@ export class RegiApiService {
     return this.http.get<any>(`${this.baseUrl}/meal/candidates`);
   }
 
-  // Get all meal plans (admin) with optional filters
-  getAdminMealPlans(filters?: { name?: string; community?: boolean; yeh?: boolean }): Observable<any> {
+  // Get all meal plans (admin) with optional filters. `name` matches Meal.Name,
+  // `email` matches the owner's email (both substring, server-side).
+  getAdminMealPlans(filters?: { name?: string; email?: string; community?: boolean; yeh?: boolean }): Observable<any> {
     let params = new HttpParams();
     if (filters?.name) params = params.set('name', filters.name);
+    if (filters?.email) params = params.set('email', filters.email);
     if (filters?.community) params = params.set('community', 'true');
     if (filters?.yeh) params = params.set('yeh', 'true');
     return this.http.get<any>(`${this.baseUrl}/admin/meals`, { params });
